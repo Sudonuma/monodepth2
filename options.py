@@ -34,8 +34,8 @@ class MonodepthOptions:
         self.parser.add_argument("--split",
                                  type=str,
                                  help="which training split to use",
-                                 choices=["eigen_zhou", "eigen_full", "odom", "benchmark"],
-                                 default="eigen_zhou")
+                                 choices=["eigen_zhou", "eigen_full", "odom", "benchmark", "video_split"],
+                                 default="video_split")
         self.parser.add_argument("--num_layers",
                                  type=int,
                                  help="number of resnet layers",
