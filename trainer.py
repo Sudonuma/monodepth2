@@ -206,6 +206,7 @@ class Trainer:
 
             self.model_optimizer.zero_grad()
             losses["loss"].backward()
+            print(losses)
             self.model_optimizer.step()
 
             duration = time.time() - before_op_time
