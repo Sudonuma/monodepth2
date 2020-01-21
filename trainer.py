@@ -24,6 +24,8 @@ from layers import *
 import datasets
 import networks
 from IPython import embed
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = "2"
 
 
 class Trainer:
@@ -199,14 +201,15 @@ class Trainer:
         self.set_train()
 
         for batch_idx, inputs in enumerate(self.train_loader):
-
+            
+            self.batch_index = inputs['target_folder']
             before_op_time = time.time()
-
+            # inputs = inputs['inputs']
             outputs, losses = self.process_batch(inputs)
 
             self.model_optimizer.zero_grad()
             losses["loss"].backward()
-            print(losses)
+            #print(losses)
             self.model_optimizer.step()
 
             duration = time.time() - before_op_time
@@ -376,9 +379,9 @@ class Trainer:
                         axisangle[:, 0], translation[:, 0] * mean_inv_depth[:, 0], frame_id < 0)
 
                 cam_points = self.backproject_depth[source_scale](
-                    depth, inputs[("inv_K", source_scale)])
+                    depth, inputs[("inv_K", source_scale)], self.batch_index)
                 pix_coords = self.project_3d[source_scale](
-                    cam_points, inputs[("K", source_scale)], T)
+                    cam_points, inputs[("K", source_scale)], T, self.batch_index)
 
                 outputs[("sample", frame_id, scale)] = pix_coords
 

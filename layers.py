@@ -160,8 +160,14 @@ class BackprojectDepth(nn.Module):
         self.pix_coords = nn.Parameter(torch.cat([self.pix_coords, self.ones], 1),
                                        requires_grad=False)
 
-    def forward(self, depth, inv_K):
-        cam_points = torch.matmul(inv_K[:, :3, :3], self.pix_coords)
+    def forward(self, depth, inv_K, idx):
+       
+        idex = [int(i) for i in idx]
+        print('this is the index insode backprojectdepth', idex)
+        for i in range(len(idex)):
+            cam_points = torch.matmul(inv_K[i, idex[i], :3, :3], self.pix_coords)
+        #cam_points = torch.matmul(inv_K[:, 0, :3, :3], self.pix_coords)
+        print(cam_points[0],'this is the size of campoints')
         cam_points = depth.view(self.batch_size, 1, -1) * cam_points
         cam_points = torch.cat([cam_points, self.ones], 1)
 
@@ -179,8 +185,10 @@ class Project3D(nn.Module):
         self.width = width
         self.eps = eps
 
-    def forward(self, points, K, T):
-        P = torch.matmul(K, T)[:, :3, :]
+    def forward(self, points, K, T, idx):
+        idex = [int(i) for i in idx]
+        for i in range(len(idex)):
+            P = torch.matmul(K[i, idex[i], :, :], T)[:, :3, :]
 
         cam_points = torch.matmul(P, points)
 
