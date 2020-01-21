@@ -31,6 +31,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = "2"
 class Trainer:
     def __init__(self, options):
         self.opt = options
+        #self.experiment = experiment
         self.log_path = os.path.join(self.opt.log_dir, self.opt.model_name)
 
         # checking height and width are multiples of 32
@@ -45,7 +46,6 @@ class Trainer:
         self.num_scales = len(self.opt.scales)
         self.num_input_frames = len(self.opt.frame_ids)
         self.num_pose_frames = 2 if self.opt.pose_model_input == "pairs" else self.num_input_frames
-
         assert self.opt.frame_ids[0] == 0, "frame_ids must start with 0"
 
         self.use_pose_net = not (self.opt.use_stereo and self.opt.frame_ids == [0])
@@ -201,8 +201,9 @@ class Trainer:
         self.set_train()
 
         for batch_idx, inputs in enumerate(self.train_loader):
-            
+            #print(inputs.keys()) 
             self.batch_index = inputs['target_folder']
+            #inputs.pop('target_folder')
             before_op_time = time.time()
             # inputs = inputs['inputs']
             outputs, losses = self.process_batch(inputs)
@@ -228,12 +229,15 @@ class Trainer:
                 self.val()
 
             self.step += 1
+            # inputs.pop('target_folder')
 
     def process_batch(self, inputs):
         """Pass a minibatch through the network and generate images and losses
-        """
+elf.batch_index = inputs['target_folder']       """
         for key, ipt in inputs.items():
-            inputs[key] = ipt.to(self.device)
+            if key != 'target_folder':
+                #print(inputs.keys())
+                inputs[key] = ipt.to(self.device)
 
         if self.opt.pose_model_type == "shared":
             # If we are using a shared encoder for both depth and pose (as advocated
@@ -545,8 +549,10 @@ class Trainer:
         """Write an event to the tensorboard events file
         """
         writer = self.writers[mode]
+        #experiment.log_metrics(losses.cpu().numpy())
         for l, v in losses.items():
             writer.add_scalar("{}".format(l), v, self.step)
+            #experiment.log_metric("{}".format(l),v.cpu().detach().numpy())
 
         for j in range(min(4, self.opt.batch_size)):  # write a maxmimum of four images
             for s in self.opt.scales:
