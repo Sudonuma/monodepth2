@@ -199,7 +199,7 @@ class Trainer:
         self.set_train()
 
         for batch_idx, inputs in enumerate(self.train_loader):
-
+            self.batch_index = batch_indx
             before_op_time = time.time()
 
             outputs, losses = self.process_batch(inputs)
@@ -376,9 +376,9 @@ class Trainer:
                         axisangle[:, 0], translation[:, 0] * mean_inv_depth[:, 0], frame_id < 0)
 
                 cam_points = self.backproject_depth[source_scale](
-                    depth, inputs[("inv_K", source_scale)])
+                    depth, inputs[("inv_K", source_scale)], self.batch_index)
                 pix_coords = self.project_3d[source_scale](
-                    cam_points, inputs[("K", source_scale)], T)
+                    cam_points, inputs[("K", source_scale)], T , self.batch_index)
 
                 outputs[("sample", frame_id, scale)] = pix_coords
 
