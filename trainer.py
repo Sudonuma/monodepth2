@@ -199,9 +199,9 @@ class Trainer:
         self.set_train()
 
         for batch_idx, inputs in enumerate(self.train_loader):
-            self.batch_index = batch_indx
+            self.batch_index = inputs['index']
             before_op_time = time.time()
-
+            inputs = inputs['inputs']
             outputs, losses = self.process_batch(inputs)
 
             self.model_optimizer.zero_grad()
