@@ -139,11 +139,11 @@ class MonoDataset(data.Dataset):
 
         do_color_aug = self.is_train and random.random() > 0.5
         do_flip = self.is_train and random.random() > 0.5
-        print('this is the index',index)
+        #print('this is the index',index)
         line = self.filenames[index].split()
         folder = line[0]
-        self.folder = folder
-        print('this is self folder in monodataset class',self.folder)
+        #self.folder = folder
+        #print('this is self folder in monodataset class',self.folder)
 
         if len(line) == 3:
             frame_index = int(line[1])
@@ -166,10 +166,10 @@ class MonoDataset(data.Dataset):
         for scale in range(self.num_scales):
             K = self.K.copy()
 
-            #K[0, :] *= self.width // (2 ** scale)
-            #K[1, :] *= self.height // (2 ** scale)
-            K[int(folder), 0, :] *= self.width // (2 ** scale)
-            K[int(folder), 1, :] *= self.height // (2 ** scale)
+            K[0, :] *= self.width // (2 ** scale)
+            K[1, :] *= self.height // (2 ** scale)
+            #K[int(folder), 0, :] *= self.width // (2 ** scale)
+            #K[int(folder), 1, :] *= self.height // (2 ** scale)
 
             inv_K = np.linalg.pinv(K)
 
@@ -200,7 +200,7 @@ class MonoDataset(data.Dataset):
             stereo_T[0, 3] = side_sign * baseline_sign * 0.1
 
             inputs["stereo_T"] = torch.from_numpy(stereo_T)
-            inputs["target_folder"] = folder
+            # inputs["target_folder"] = folder
 
         return inputs
 

@@ -1,4 +1,4 @@
-# Copyright Niantic 2019. Patent Pending. All rights reserved.
+#copyright Niantic 2019. Patent Pending. All rights reserved.
 #
 # This software is licensed under the terms of the Monodepth2 licence
 # which allows for non-commercial use only, the full terms of which are made
@@ -24,8 +24,6 @@ from layers import *
 import datasets
 import networks
 from IPython import embed
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
 
 
 class Trainer:
@@ -201,15 +199,13 @@ class Trainer:
         self.set_train()
 
         for batch_idx, inputs in enumerate(self.train_loader):
-            
-            self.batch_index = inputs['target_folder']
+
             before_op_time = time.time()
-            # inputs = inputs['inputs']
+
             outputs, losses = self.process_batch(inputs)
 
             self.model_optimizer.zero_grad()
             losses["loss"].backward()
-            #print(losses)
             self.model_optimizer.step()
 
             duration = time.time() - before_op_time
@@ -379,9 +375,9 @@ class Trainer:
                         axisangle[:, 0], translation[:, 0] * mean_inv_depth[:, 0], frame_id < 0)
 
                 cam_points = self.backproject_depth[source_scale](
-                    depth, inputs[("inv_K", source_scale)], self.batch_index)
+                    depth, inputs[("inv_K", source_scale)])
                 pix_coords = self.project_3d[source_scale](
-                    cam_points, inputs[("K", source_scale)], T, self.batch_index)
+                    cam_points, inputs[("K", source_scale)], T)
 
                 outputs[("sample", frame_id, scale)] = pix_coords
 
@@ -501,7 +497,6 @@ class Trainer:
 
     def compute_depth_losses(self, inputs, outputs, losses):
         """Compute depth metrics, to allow monitoring during training
-
         This isn't particularly accurate as it averages over the entire batch,
         so is only used to give an indication of validation performance
         """
