@@ -25,7 +25,7 @@ import datasets
 import networks
 from IPython import embed
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 
 class Trainer:

@@ -168,8 +168,8 @@ class MonoDataset(data.Dataset):
 
             #K[0, :] *= self.width // (2 ** scale)
             #K[1, :] *= self.height // (2 ** scale)
-            K[int(folder), 0, :] *= self.width // (2 ** scale)
-            K[int(folder), 1, :] *= self.height // (2 ** scale)
+            K[:, 0, :] *= self.width // (2 ** scale)
+            K[:, 1, :] *= self.height // (2 ** scale)
 
             inv_K = np.linalg.pinv(K)
 
