@@ -26,7 +26,7 @@ class KITTIDataset(MonoDataset):
         #                   [0, 0, 1, 0],
         #                   [0, 0, 0, 1]], dtype=np.float32)
 
-        self.K = np.zeros((16, 4, 4))
+        self.K = np.zeros((16, 4, 4), dtype=np.float32)
 
         self.full_res_shape = (1920, 1080)
         
@@ -52,7 +52,7 @@ class KITTIDataset(MonoDataset):
             self.K[i, 0, 0] = focals[i] / self.full_res_shape[0]
             self.K[i, 1, 1] = focals[i] / self.full_res_shape[1]
         
-        print(K)
+        #print(self.K)
         
         self.side_map = {"2": 2, "3": 3, "l": 2, "r": 3}
         
