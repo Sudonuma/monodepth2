@@ -6,7 +6,7 @@
 
 from __future__ import absolute_import, division, print_function
 
-#from comet_ml import Experiment
+from comet_ml import Experiment
 from trainer import Trainer
 from options import MonodepthOptions
 

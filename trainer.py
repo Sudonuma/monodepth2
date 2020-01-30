@@ -5,6 +5,7 @@
 # available in the LICENSE file.
 
 from __future__ import absolute_import, division, print_function
+from comet_ml import Experiment
 
 import numpy as np
 import time
@@ -26,6 +27,9 @@ import networks
 from IPython import embed
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+
+
+experiment = Experiment(api_key="l6NAe3ZOaMzGNsrPmy78yRnEv", project_name="depth2", workspace="tehad", auto_metric_logging=False)
 
 
 class Trainer:
@@ -124,6 +128,7 @@ class Trainer:
         img_ext = '.png' if self.opt.png else '.jpg'
 
         num_train_samples = len(train_filenames)
+        self.num_train_samples = num_train_samples
         self.num_total_steps = num_train_samples // self.opt.batch_size * self.opt.num_epochs
 
         train_dataset = self.dataset(
@@ -199,44 +204,76 @@ class Trainer:
 
         print("Training")
         self.set_train()
-
+        allloss = []
+        thisloss = 0
         for batch_idx, inputs in enumerate(self.train_loader):
-            #print(inputs.keys()) 
+
             self.batch_index = inputs['target_folder']
-            #inputs.pop('target_folder')
             before_op_time = time.time()
-            # inputs = inputs['inputs']
+
             outputs, losses = self.process_batch(inputs)
+
+            # experiment.log_metric('loss before back prop', losses["loss"].cpu().detach().numpy(), epoch=self.step)
+            # print('this is the loss BEFORE backprop', losses["loss"].cpu().detach().numpy())
+            # print('step before backprop', self.step)
+
 
             self.model_optimizer.zero_grad()
             losses["loss"].backward()
-            #print(losses)
             self.model_optimizer.step()
+            # lahne sajjal el loss of each batch , amal akia fazet appendw felikhr amal average
+            # print('this is the loss AFTER backprop', losses["loss"].cpu().detach().numpy())
 
             duration = time.time() - before_op_time
+            experiment.log_metric('loss after backprop', losses["loss"].cpu().detach().numpy(), epoch=self.step)
+            # print('step after backrop', self.step)
+            
+            # if batch_idx==163:
+            #     experiment.log_metric('loss in last batch', losses["loss"].cpu().detach().numpy(), epoch=self.epoch)
 
             # log less frequently after the first 2000 steps to save time & disk space
-            early_phase = batch_idx % self.opt.log_frequency == 0 and self.step < 2000
-            late_phase = self.step % 2000 == 0
+            # early_phase = batch_idx % 40 == 0 and self.step < 2000
+            # late_phase = self.step % 2000 == 0
+            # early_phase = batch_idx % 40 == 0
+           
+            # print('this is batch index',batch_idx)
+            # print(early_phase)
+            # print()
+            # f = early_phase or late_phase
+            # print('f', f)
+            # if early_phase or late_phase:
 
-            if early_phase or late_phase:
-                self.log_time(batch_idx, duration, losses["loss"].cpu().data)
+                # if "depth_gt" in inputs:
+                #     self.compute_depth_losses(inputs, outputs, losses)
 
-                if "depth_gt" in inputs:
-                    self.compute_depth_losses(inputs, outputs, losses)
-
-                self.log("train", inputs, outputs, losses)
-                self.val()
-
+                # self.log("train", inputs, outputs, losses)
+            thisloss += losses["loss"].cpu().detach().numpy()
+            # print('accumukate',thisloss)
+            allloss.append(losses["loss"].cpu().detach().numpy())
+            # print('you list',allloss)
+            self.val()
+            # print(self.step)
             self.step += 1
+            # self.log_time(batch_idx, duration, losses["loss"].cpu().data)
+            # print('devide by',int(self.num_train_samples/self.opt.batch_size))
+            #here they are backprogated?
+        self.log_time(batch_idx, duration, losses["loss"].cpu().data)
+        thisloss /= int(self.num_train_samples/self.opt.batch_size)
+        # print('average loss', thisloss)
+        experiment.log_metric('last batch loss', losses["loss"].cpu().detach().numpy(), epoch=self.epoch)
+        experiment.log_metric('average loss', thisloss, epoch=self.epoch)
+
+        # self.log_time(batch_idx, duration, losses["loss"].cpu().data)
+
             # inputs.pop('target_folder')
 
     def process_batch(self, inputs):
         """Pass a minibatch through the network and generate images and losses
 elf.batch_index = inputs['target_folder']       """
+
         for key, ipt in inputs.items():
             if key != 'target_folder':
-                #print(inputs.keys())
+                
                 inputs[key] = ipt.to(self.device)
 
         if self.opt.pose_model_type == "shared":
@@ -264,6 +301,9 @@ elf.batch_index = inputs['target_folder']       """
 
         self.generate_images_pred(inputs, outputs)
         losses = self.compute_losses(inputs, outputs)
+
+        #also here are not backpropagated
+        # experiment.log_metric('loss per batch', losses["loss"].cpu().detach().numpy())
 
         return outputs, losses
 
@@ -491,6 +531,9 @@ elf.batch_index = inputs['target_folder']       """
 
             loss += to_optimise.mean()
 
+            # print('here is the loss', loss)
+            # experiment.log_metric('compare loss', loss.cpu().detach().numpy())
+
             mean_disp = disp.mean(2, True).mean(3, True)
             norm_disp = disp / (mean_disp + 1e-7)
             smooth_loss = get_smooth_loss(norm_disp, color)
@@ -499,8 +542,17 @@ elf.batch_index = inputs['target_folder']       """
             total_loss += loss
             losses["loss/{}".format(scale)] = loss
 
+        # experiment.log_metric('compare loss', loss.cpu().detach().numpy())
         total_loss /= self.num_scales
         losses["loss"] = total_loss
+
+        #here they are not backpropagated just computed
+        
+        # experiment.log_metric('total looss in compute loss', total_loss.cpu().detach().numpy(), epoch=self.epoch)
+        # experiment.log_metric('losses["loss"]', losses["loss"].cpu().detach().numpy(), epoch=self.step)
+        # print('steo inside compute loss', self.step)
+
+        # print('this also is the loss before backprop in compute loss', losses["loss"].cpu().detach().numpy())
         return losses
 
     def compute_depth_losses(self, inputs, outputs, losses):
@@ -552,34 +604,34 @@ elf.batch_index = inputs['target_folder']       """
         #experiment.log_metrics(losses.cpu().numpy())
         for l, v in losses.items():
             writer.add_scalar("{}".format(l), v, self.step)
-            #experiment.log_metric("{}".format(l),v.cpu().detach().numpy())
+            # experiment.log_metric("loss in log {}".format(l), v.cpu().detach().numpy(), epoch= self.step)
 
-        for j in range(min(4, self.opt.batch_size)):  # write a maxmimum of four images
-            for s in self.opt.scales:
-                for frame_id in self.opt.frame_ids:
-                    writer.add_image(
-                        "color_{}_{}/{}".format(frame_id, s, j),
-                        inputs[("color", frame_id, s)][j].data, self.step)
-                    if s == 0 and frame_id != 0:
-                        writer.add_image(
-                            "color_pred_{}_{}/{}".format(frame_id, s, j),
-                            outputs[("color", frame_id, s)][j].data, self.step)
+        # for j in range(min(4, self.opt.batch_size)):  # write a maxmimum of four images
+        #     for s in self.opt.scales:
+        #         for frame_id in self.opt.frame_ids:
+        #             writer.add_image(
+        #                 "color_{}_{}/{}".format(frame_id, s, j),
+        #                 inputs[("color", frame_id, s)][j].data, self.step)
+        #             if s == 0 and frame_id != 0:
+        #                 writer.add_image(
+        #                     "color_pred_{}_{}/{}".format(frame_id, s, j),
+        #                     outputs[("color", frame_id, s)][j].data, self.step)
 
-                writer.add_image(
-                    "disp_{}/{}".format(s, j),
-                    normalize_image(outputs[("disp", s)][j]), self.step)
+        #         writer.add_image(
+        #             "disp_{}/{}".format(s, j),
+        #             normalize_image(outputs[("disp", s)][j]), self.step)
 
-                if self.opt.predictive_mask:
-                    for f_idx, frame_id in enumerate(self.opt.frame_ids[1:]):
-                        writer.add_image(
-                            "predictive_mask_{}_{}/{}".format(frame_id, s, j),
-                            outputs["predictive_mask"][("disp", s)][j, f_idx][None, ...],
-                            self.step)
+        #         if self.opt.predictive_mask:
+        #             for f_idx, frame_id in enumerate(self.opt.frame_ids[1:]):
+        #                 writer.add_image(
+        #                     "predictive_mask_{}_{}/{}".format(frame_id, s, j),
+        #                     outputs["predictive_mask"][("disp", s)][j, f_idx][None, ...],
+        #                     self.step)
 
-                elif not self.opt.disable_automasking:
-                    writer.add_image(
-                        "automask_{}/{}".format(s, j),
-                        outputs["identity_selection/{}".format(s)][j][None, ...], self.step)
+        #         elif not self.opt.disable_automasking:
+        #             writer.add_image(
+        #                 "automask_{}/{}".format(s, j),
+        #                 outputs["identity_selection/{}".format(s)][j][None, ...], self.step)
 
     def save_opts(self):
         """Save options to disk so we know what we ran this experiment with

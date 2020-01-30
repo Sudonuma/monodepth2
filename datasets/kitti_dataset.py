@@ -6,6 +6,8 @@
 
 from __future__ import absolute_import, division, print_function
 
+from comet_ml import Experiment
+
 import os
 import skimage.transform
 import numpy as np
@@ -14,6 +16,7 @@ import PIL.Image as pil
 from kitti_utils import generate_depth_map
 from .mono_dataset import MonoDataset
 
+experiment = Experiment(api_key="l6NAe3ZOaMzGNsrPmy78yRnEv", project_name="depth2", workspace="tehad")
 
 class KITTIDataset(MonoDataset):
     """Superclass for different types of KITTI dataset loaders
@@ -159,8 +162,8 @@ class KITTIDataset(MonoDataset):
                           [0, 0, 1, 0],
                           [0, 0, 0, 1]],
  
-                          [[1039.78/1920, 0, 0.5, 0],
-                          [0, 1039.78/1080, 0.5, 0],
+                          [[0.58, 0, 0.5, 0],
+                          [0, 1.92, 0.5, 0],
                           [0, 0, 1, 0],
                           [0, 0, 0, 1]],
               
@@ -199,8 +202,8 @@ class KITTIDataset(MonoDataset):
                           [0, 0, 1, 0],
                           [0, 0, 0, 1]],
               
-                          [[1403.75/1920, 0, 0.5, 0],
-                          [0, 1403.75/1080, 0.5, 0],
+                          [[0.58, 0, 0.5, 0],
+                          [0, 1.92, 0.5, 0],
                           [0, 0, 1, 0],
                           [0, 0, 0, 1]],
  
@@ -222,6 +225,7 @@ class KITTIDataset(MonoDataset):
         self.side_map = {"2": 2, "3": 3, "l": 2, "r": 3}
         #self.folder  = MonoDataset.return_folder(self)
         #print(self.folder)
+        
     def check_depth(self):
         line = self.filenames[0].split()
         scene_name = line[0]
@@ -249,6 +253,7 @@ class KITTIRAWDataset(KITTIDataset):
     def __init__(self, *args, **kwargs):
         super(KITTIRAWDataset, self).__init__(*args, **kwargs)
         #self.folder = KITTIDataset.folder
+    
     def get_image_path(self, folder, frame_index, side):
         #f_str = "{:010d}{}".format(frame_index, self.img_ext)
         f_str = str(frame_index)+str(self.img_ext)
