@@ -163,6 +163,7 @@ class BackprojectDepth(nn.Module):
     def forward(self, depth, inv_K, idx):
        
         idex = [int(i) for i in idx]
+        # print(idex)
         #print('this is the index insode backprojectdepth', idex)
         for i in range(len(idex)):
             cam_points = torch.matmul(inv_K[i, idex[i], :3, :3], self.pix_coords)
@@ -189,7 +190,7 @@ class Project3D(nn.Module):
         idex = [int(i) for i in idx]
         for i in range(len(idex)):
             P = torch.matmul(K[i, idex[i], :, :], T)[:, :3, :]
-
+            # print(K[i, idex[i], :, :])
         cam_points = torch.matmul(P, points)
 
         pix_coords = cam_points[:, :2, :] / (cam_points[:, 2, :].unsqueeze(1) + self.eps)

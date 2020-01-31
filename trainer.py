@@ -128,7 +128,11 @@ class Trainer:
         img_ext = '.png' if self.opt.png else '.jpg'
 
         num_train_samples = len(train_filenames)
+        num_val_samples = len(val_filenames)
+
+        self.num_val_samples = num_val_samples
         self.num_train_samples = num_train_samples
+
         self.num_total_steps = num_train_samples // self.opt.batch_size * self.opt.num_epochs
 
         train_dataset = self.dataset(
@@ -206,6 +210,7 @@ class Trainer:
         self.set_train()
         allloss = []
         thisloss = 0
+        self.val_running_loss = 0
         for batch_idx, inputs in enumerate(self.train_loader):
 
             self.batch_index = inputs['target_folder']
@@ -225,7 +230,7 @@ class Trainer:
             # print('this is the loss AFTER backprop', losses["loss"].cpu().detach().numpy())
 
             duration = time.time() - before_op_time
-            experiment.log_metric('loss after backprop', losses["loss"].cpu().detach().numpy(), epoch=self.step)
+            # experiment.log_metric('loss after backprop', losses["loss"].cpu().detach().numpy(), epoch=self.step)
             # print('step after backrop', self.step)
             
             # if batch_idx==163:
@@ -251,7 +256,9 @@ class Trainer:
             # print('accumukate',thisloss)
             allloss.append(losses["loss"].cpu().detach().numpy())
             # print('you list',allloss)
-            self.val()
+            self.val(self.val_running_loss)
+            # print('in train loop',self.val_running_loss)
+            # val_running_loss =  
             # print(self.step)
             self.step += 1
             # self.log_time(batch_idx, duration, losses["loss"].cpu().data)
@@ -259,9 +266,13 @@ class Trainer:
             #here they are backprogated?
         self.log_time(batch_idx, duration, losses["loss"].cpu().data)
         thisloss /= int(self.num_train_samples/self.opt.batch_size)
+        self.val_running_loss /= int(self.num_val_samples/self.opt.batch_size)
+        # print('devide by',int(self.num_val_samples/self.opt.batch_size))
+        print('average validation',self.val_running_loss)
         # print('average loss', thisloss)
         experiment.log_metric('last batch loss', losses["loss"].cpu().detach().numpy(), epoch=self.epoch)
         experiment.log_metric('average loss', thisloss, epoch=self.epoch)
+        experiment.log_metric('val loss ', self.val_running_loss, epoch=self.epoch)
 
         # self.log_time(batch_idx, duration, losses["loss"].cpu().data)
 
@@ -365,7 +376,7 @@ elf.batch_index = inputs['target_folder']       """
 
         return outputs
 
-    def val(self):
+    def val(self, val_running_loss):
         """Validate the model on a single minibatch
         """
         self.set_eval()
@@ -377,6 +388,10 @@ elf.batch_index = inputs['target_folder']       """
 
         with torch.no_grad():
             outputs, losses = self.process_batch(inputs)
+            self.val_running_loss += losses["loss"].cpu().detach().numpy()
+            # print('inside validation',self.val_running_loss)
+            # if self.step % ((self.num_train_samples/self.opt.batch_size)-1) == 0:
+            #     val_running_loss /= int(self.num_train_samples/self.opt.batch_size)
 
             if "depth_gt" in inputs:
                 self.compute_depth_losses(inputs, outputs, losses)

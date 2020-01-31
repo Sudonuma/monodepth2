@@ -168,8 +168,10 @@ class MonoDataset(data.Dataset):
 
             #K[0, :] *= self.width // (2 ** scale)
             #K[1, :] *= self.height // (2 ** scale)
+            # print('insode mono K', K[:, 0, :])
             K[:, 0, :] *= self.width // (2 ** scale)
             K[:, 1, :] *= self.height // (2 ** scale)
+            # print('K after rescaling', K[:, 0, :])
 
             inv_K = np.linalg.pinv(K)
 
