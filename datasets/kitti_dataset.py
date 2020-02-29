@@ -12,6 +12,8 @@ import os
 import skimage.transform
 import numpy as np
 import PIL.Image as pil
+from PIL import Image  # using pillow-simd for increased speed
+
 
 from kitti_utils import generate_depth_map
 from .mono_dataset import MonoDataset
@@ -249,6 +251,7 @@ class KITTIDataset(MonoDataset):
         #print(self.folder)
         
     def check_depth(self):
+        print('hello check depth')
         line = self.filenames[0].split()
         scene_name = line[0]
         frame_index = int(line[1])
@@ -268,6 +271,16 @@ class KITTIDataset(MonoDataset):
 
         return color
 
+    def get_gtdepth(self, folder, frame_index, side, do_flip):
+        depth_gt = np.load(self.get_depth_path(folder, frame_index, side))
+        depth_gt = np.divide(depth_gt,1000)
+        if do_flip:
+            # color = color.transpose(pil.FLIP_LEFT_RIGHT)
+            depth_gt = np.fliplr(depth_gt)
+        depth_gt = Image.fromarray(depth_gt)
+        
+        return depth_gt
+
 
 class KITTIRAWDataset(KITTIDataset):
     """KITTI dataset which loads the original velodyne depth maps for ground truth
@@ -284,22 +297,49 @@ class KITTIRAWDataset(KITTIDataset):
         # print(image_path)
         return image_path
 
+    # def get_depth(self, folder, frame_index, side, do_flip):
+    #     calib_path = os.path.join(self.data_path, folder.split("/")[0])
+
+    #     velo_filename = os.path.join(
+    #         self.data_path,
+    #         folder,
+    #         "velodyne_points/data/{:010d}.bin".format(int(frame_index)))
+
+    #     depth_gt = generate_depth_map(calib_path, velo_filename, self.side_map[side])
+    #     depth_gt = skimage.transform.resize(
+    #         depth_gt, self.full_res_shape[::-1], order=0, preserve_range=True, mode='constant')
+
+    #     if do_flip:
+    #         depth_gt = np.fliplr(depth_gt)
+
+    #     return depth_gt
+
+    def get_depth_path(self, folder, frame_index, side):
+        f_str = str(frame_index)+".npy"
+        depth_path = os.path.join(
+            self.data_path, folder, "image_0{}/groundtruth/depth_map/npy/".format(self.side_map[side]), f_str)
+
+        return depth_path
+    
     def get_depth(self, folder, frame_index, side, do_flip):
-        calib_path = os.path.join(self.data_path, folder.split("/")[0])
-
-        velo_filename = os.path.join(
-            self.data_path,
-            folder,
-            "velodyne_points/data/{:010d}.bin".format(int(frame_index)))
-
-        depth_gt = generate_depth_map(calib_path, velo_filename, self.side_map[side])
-        depth_gt = skimage.transform.resize(
-            depth_gt, self.full_res_shape[::-1], order=0, preserve_range=True, mode='constant')
-
+        #f_str = "{:010d}{}".format(frame_index, self.img_ext)
+        # f_str = str(frame_index)+str(self.img_ext)
+        f_str = str(frame_index)+".npy"
+        depth_path = os.path.join(
+            self.data_path, folder, "image_0{}/groundtruth/depth_map/npy/".format(self.side_map[side]), f_str)
+        depth_gt = np.load(depth_path)
+        depth_gt = np.divide(depth_gt,1000)
         if do_flip:
+            # color = color.transpose(pil.FLIP_LEFT_RIGHT)
             depth_gt = np.fliplr(depth_gt)
-
+        
+        # print(depth_gt.shape)
+        # print("fromkitti dataset",depth_path)
+        # if you return the depth path 
+        # better return the depth itself
         return depth_gt
+        # return depth_gt
+
 
 
 class KITTIOdomDataset(KITTIDataset):

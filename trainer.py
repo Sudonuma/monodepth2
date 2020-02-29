@@ -217,6 +217,7 @@ class Trainer:
             before_op_time = time.time()
 
             outputs, losses = self.process_batch(inputs)
+            # print(outputs)
 
             # experiment.log_metric('loss before back prop', losses["loss"].cpu().detach().numpy(), epoch=self.step)
             # print('this is the loss BEFORE backprop', losses["loss"].cpu().detach().numpy())
@@ -304,6 +305,7 @@ elf.batch_index = inputs['target_folder']       """
             # Otherwise, we only feed the image with frame_id 0 through the depth encoder
             features = self.models["encoder"](inputs["color_aug", 0, 0])
             outputs = self.models["depth"](features)
+            # print('primary output',outputs)
 
         if self.opt.predictive_mask:
             outputs["predictive_mask"] = self.models["predictive_mask"](features)
@@ -316,7 +318,7 @@ elf.batch_index = inputs['target_folder']       """
 
         #also here are not backpropagated
         # experiment.log_metric('loss per batch', losses["loss"].cpu().detach().numpy())
-
+        #print(outputs)
         return outputs, losses
 
     def predict_poses(self, inputs, features):
@@ -394,8 +396,8 @@ elf.batch_index = inputs['target_folder']       """
             # if self.step % ((self.num_train_samples/self.opt.batch_size)-1) == 0:
             #     val_running_loss /= int(self.num_train_samples/self.opt.batch_size)
 
-            if "depth_gt" in inputs:
-                self.compute_depth_losses(inputs, outputs, losses)
+            # if "depth_gt" in inputs:
+            #     self.compute_depth_losses(inputs, outputs, losses)
 
             self.log("val", inputs, outputs, losses)
             del inputs, outputs, losses
@@ -444,7 +446,7 @@ elf.batch_index = inputs['target_folder']       """
                     cam_points, inputs[("K", source_scale)], T, self.batch_index)
 
                 outputs[("sample", frame_id, scale)] = pix_coords
-
+                # warping 
                 outputs[("color", frame_id, scale)] = F.grid_sample(
                     inputs[("color", frame_id, source_scale)],
                     outputs[("sample", frame_id, scale)],
@@ -477,6 +479,7 @@ elf.batch_index = inputs['target_folder']       """
         for scale in self.opt.scales:
             loss = 0
             reprojection_losses = []
+            # print("before cat",reprojection_losses)
 
             if self.opt.v1_multiscale:
                 source_scale = scale
@@ -486,14 +489,21 @@ elf.batch_index = inputs['target_folder']       """
             disp = outputs[("disp", scale)]
             color = inputs[("color", 0, scale)]
             target = inputs[("color", 0, source_scale)]
+            print("target",target.size())
 
             for frame_id in self.opt.frame_ids[1:]:
+                # how is the warped computed?
+                # output computed from warping(see project 3D)
                 pred = outputs[("color", frame_id, scale)]
+                print("frame_id",frame_id)
+                print("pred",pred.size())
                 reprojection_losses.append(self.compute_reprojection_loss(pred, target))
-
+            # print("before cat",reprojection_losses.size())
             reprojection_losses = torch.cat(reprojection_losses, 1)
+            print("after cat",reprojection_losses.size())
 
             if not self.opt.disable_automasking:
+                # 
                 identity_reprojection_losses = []
                 for frame_id in self.opt.frame_ids[1:]:
                     pred = inputs[("color", frame_id, source_scale)]
@@ -528,11 +538,14 @@ elf.batch_index = inputs['target_folder']       """
                 reprojection_loss = reprojection_losses
 
             if not self.opt.disable_automasking:
-                # add random numbers to break ties
+                # add random numbers to break ties ??????????????????????????????
                 identity_reprojection_loss += torch.randn(
                     identity_reprojection_loss.shape).cuda() * 0.00001
-
+                #concatenate here ground truth mask
+                # print('identity_reprojection_loss size', identity_reprojection_loss.size())
+                # print('reprojection_loss size', reprojection_loss.size())
                 combined = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
+                # print('combined size', combined.size())
             else:
                 combined = reprojection_loss
 
@@ -540,10 +553,19 @@ elf.batch_index = inputs['target_folder']       """
                 to_optimise = combined
             else:
                 to_optimise, idxs = torch.min(combined, dim=1)
+                
+                # print('to_optimise size', to_optimise.size())
+                # print('idxs size', idxs.size())
+                # print('idxs', idxs)
+                # print('identity_reprojection_loss', identity_reprojection_loss)
+                # print('reprojection_loss', reprojection_loss)
 
             if not self.opt.disable_automasking:
+                # hna ya3mal fel mask mais kifach yestakhdam fih?
+                # not optimasing the loss on the masked area? 
                 outputs["identity_selection/{}".format(scale)] = (
                     idxs > identity_reprojection_loss.shape[1] - 1).float()
+                # print("identity_reprojection_loss.shape[1] - 1",((idxs > identity_reprojection_loss.shape[1] - 1).float()))
 
             loss += to_optimise.mean()
 
@@ -578,8 +600,11 @@ elf.batch_index = inputs['target_folder']       """
         so is only used to give an indication of validation performance
         """
         depth_pred = outputs[("depth", 0, 0)]
+        # depth_pred = torch.clamp(F.interpolate(
+        #     depth_pred, [375, 1242], mode="bilinear", align_corners=False), 1e-3, 80)
         depth_pred = torch.clamp(F.interpolate(
-            depth_pred, [375, 1242], mode="bilinear", align_corners=False), 1e-3, 80)
+            depth_pred, [1080, 1920], mode="bilinear", align_corners=False), 1e-3, 80)
+        
         depth_pred = depth_pred.detach()
 
         depth_gt = inputs["depth_gt"]
@@ -626,23 +651,23 @@ elf.batch_index = inputs['target_folder']       """
         for j in range(min(4, self.opt.batch_size)):  # write a maxmimum of four images
             for s in self.opt.scales:
                 for frame_id in self.opt.frame_ids:
-                    writer.add_image("color_{}_{}/{}".format(frame_id, s, j), inputs[("color", frame_id, s)][j].data, self.step)
+                    # writer.add_image("color_{}_{}/{}".format(frame_id, s, j), inputs[("color", frame_id, s)][j].data, self.step)
                     if s == 0 and frame_id != 0:
-                        writer.add_image("color_pred_{}_{}/{}".format(frame_id, s, j), outputs[("color", frame_id, s)][j].data, self.step)
+                        # writer.add_image("color_pred_{}_{}/{}".format(frame_id, s, j), outputs[("color", frame_id, s)][j].data, self.step)
 
                         writer.add_image("disp_{}/{}".format(s, j), normalize_image(outputs[("disp", s)][j]), self.step)
 
-        #          if self.opt.predictive_mask:
-        #            for f_idx, frame_id in enumerate(self.opt.frame_ids[1:]):
-        #                 writer.add_image(
-        #                     "predictive_mask_{}_{}/{}".format(frame_id, s, j),
-        #                     outputs["predictive_mask"][("disp", s)][j, f_idx][None, ...],
-        #                     self.step)
+                if self.opt.predictive_mask:
+                   for f_idx, frame_id in enumerate(self.opt.frame_ids[1:]):
+                        writer.add_image(
+                            "predictive_mask_{}_{}/{}".format(frame_id, s, j),
+                            outputs["predictive_mask"][("disp", s)][j, f_idx][None, ...],
+                            self.step)
 
-        #         elif not self.opt.disable_automasking:
-        #             writer.add_image(
-        #                 "automask_{}/{}".format(s, j),
-        #                 outputs["identity_selection/{}".format(s)][j][None, ...], self.step)
+                elif not self.opt.disable_automasking:
+                    writer.add_image(
+                        "automask_{}/{}".format(s, j),
+                        outputs["identity_selection/{}".format(s)][j][None, ...], self.step)
 
     def save_opts(self):
         """Save options to disk so we know what we ran this experiment with

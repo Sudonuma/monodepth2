@@ -24,6 +24,13 @@ def pil_loader(path):
         with Image.open(f) as img:
             return img.convert('RGB')
 
+def npy_loader(path):
+    # open path as file to avoid ResourceWarning
+    # (https://github.com/python-pillow/Pillow/issues/835)
+    with open(path, 'rb') as f:
+        with Image.open(f) as img:
+            return img.convert('RGB')
+
 
 class MonoDataset(data.Dataset):
     """Superclass for monocular dataloaders
@@ -80,12 +87,18 @@ class MonoDataset(data.Dataset):
             self.hue = 0.1
 
         self.resize = {}
+        self.resize1 = {}
         for i in range(self.num_scales):
             s = 2 ** i
             self.resize[i] = transforms.Resize((self.height // s, self.width // s),
                                                interpolation=self.interp)
 
-        self.load_depth = self.check_depth()
+            # self.resize1[i] = transforms.Resize((288, 512), interpolation=0)
+
+            self.resize1[i] = transforms.Resize((self.height // s, self.width // s), interpolation=0)
+
+        # self.load_depth = self.check_depth()
+        self.load_depth = True
 
     def preprocess(self, inputs, color_aug):
         """Resize colour images to the required scales and augment if required
@@ -96,10 +109,23 @@ class MonoDataset(data.Dataset):
         """
         for k in list(inputs):
             frame = inputs[k]
+            # print('aaa',k)
             if "color" in k:
                 n, im, i = k
                 for i in range(self.num_scales):
                     inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i - 1)])
+
+        for k in list(inputs):
+            frame = inputs[k]
+            # print(k)
+            if "ground_truth" in k:
+                n, im, i = k
+                for i in range(self.num_scales):
+                    # x = inputs[(n, im, i)]
+                    # x = Image.fromarray(inputs[(n, im, i - 1)])
+                    inputs[(n, im, i)] = self.resize1[i](inputs[(n, im, i - 1)])
+
+                    # inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i - 1)])
 
         for k in list(inputs):
             f = inputs[k]
@@ -107,6 +133,14 @@ class MonoDataset(data.Dataset):
                 n, im, i = k
                 inputs[(n, im, i)] = self.to_tensor(f)
                 inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f))
+                # torch.from_numpy(inputs["depth_gt"].astype(np.float32))
+
+        for k in list(inputs):
+            f = inputs[k]
+            if "ground_truth" in k:
+                n, im, i = k
+                inputs[(n, im, i)] = self.to_tensor(f)
+                # inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f))
 
     def __len__(self):
         return len(self.filenames)
@@ -162,6 +196,10 @@ class MonoDataset(data.Dataset):
             else:
                 inputs[("color", i, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
 
+        
+        for i in self.frame_idxs:
+            inputs[("ground_truth", i, -1)] = self.get_gtdepth(folder, frame_index + i, side, do_flip)
+
         # adjusting intrinsics to match each scale in the pyramid
         for scale in range(self.num_scales):
             K = self.K.copy()
@@ -189,11 +227,14 @@ class MonoDataset(data.Dataset):
         for i in self.frame_idxs:
             del inputs[("color", i, -1)]
             del inputs[("color_aug", i, -1)]
+            del inputs[("ground_truth", i, -1)]
 
         if self.load_depth:
             depth_gt = self.get_depth(folder, frame_index, side, do_flip)
+            # print(depth_gt)
             inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
             inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
+            # print(inputs["depth_gt"].size())
 
         if "s" in self.frame_idxs:
             stereo_T = np.eye(4, dtype=np.float32)
@@ -203,7 +244,8 @@ class MonoDataset(data.Dataset):
 
             inputs["stereo_T"] = torch.from_numpy(stereo_T)
         inputs["target_folder"] = folder
-
+        # for key, ipt in inputs.items():
+        #     print(key)
         return inputs
 
     def return_folder(self, folder):
@@ -216,4 +258,14 @@ class MonoDataset(data.Dataset):
         raise NotImplementedError
 
     def get_depth(self, folder, frame_index, side, do_flip):
+        # #f_str = "{:010d}{}".format(frame_index, self.img_ext)
+        # # f_str = str(frame_index)+str(self.img_ext)
+        # f_str = str(frame_index)+".npy"
+        # depth_path = os.path.join(
+        #     self.data_path, folder, "image_0{}/groundtruth/depth_map/npy/".format(self.side_map[side]), f_str)
+        
+        # print("from mono dataset ",depth_path)
+        # # if you return the depth path 
+        # # better return the depth itself
+        # return depth_path
         raise NotImplementedError
