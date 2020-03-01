@@ -316,7 +316,13 @@ elf.batch_index = inputs['target_folder']       """
 
         #also here are not backpropagated
         # experiment.log_metric('loss per batch', losses["loss"].cpu().detach().numpy())
-
+        print('begin////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////')
+        # print("this is the output", outputs)
+        for key, value in outputs.items():
+            print('key',key, "value size",value.size())
+            if key == "('sample', -1, 0)":
+                print("dict key",value.size())
+        print('end/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////')
         return outputs, losses
 
     def predict_poses(self, inputs, features):
