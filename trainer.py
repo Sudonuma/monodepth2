@@ -29,7 +29,7 @@ import os
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 
-experiment = Experiment(api_key="l6NAe3ZOaMzGNsrPmy78yRnEv", project_name="depth2", workspace="tehad", auto_metric_logging=False)
+experiment = Experiment(api_key="l6NAe3ZOaMzGNsrPmy78yRnEv", project_name="monodepth2", workspace="tehad", auto_metric_logging=False)
 
 
 class Trainer:
@@ -210,6 +210,7 @@ class Trainer:
         self.set_train()
         allloss = []
         thisloss = 0
+        reproj_loss_per_epoch = 0
         self.val_running_loss = 0
         for batch_idx, inputs in enumerate(self.train_loader):
 
@@ -254,6 +255,7 @@ class Trainer:
 
                 # self.log("train", inputs, outputs, losses)
             thisloss += losses["loss"].cpu().detach().numpy()
+            reproj_loss_per_epoch += losses["reproj_loss"].cpu().detach().numpy()
             # print('accumukate',thisloss)
             allloss.append(losses["loss"].cpu().detach().numpy())
             # print('you list',allloss)
@@ -266,13 +268,17 @@ class Trainer:
             # print('devide by',int(self.num_train_samples/self.opt.batch_size))
             #here they are backprogated?
         self.log_time(batch_idx, duration, losses["loss"].cpu().data)
+
         thisloss /= int(self.num_train_samples/self.opt.batch_size)
+        reproj_loss_per_epoch /= int(self.num_train_samples/self.opt.batch_size)
+
         self.val_running_loss /= int(self.num_val_samples/self.opt.batch_size)
         # print('devide by',int(self.num_val_samples/self.opt.batch_size))
         print('average validation',self.val_running_loss)
         # print('average loss', thisloss)
         experiment.log_metric('last batch loss', losses["loss"].cpu().detach().numpy(), epoch=self.epoch)
         experiment.log_metric('average loss', thisloss, epoch=self.epoch)
+        experiment.log_metric('average reprojection loss', reproj_loss_per_epoch, epoch=self.epoch)
         self.log("train", inputs, outputs, thisloss)
         experiment.log_metric('val loss ', self.val_running_loss, epoch=self.epoch)
         self.log("val", inputs, outputs, self.val_running_loss)
@@ -440,6 +446,7 @@ elf.batch_index = inputs['target_folder']       """
                     T = transformation_from_parameters(
                         axisangle[:, 0], translation[:, 0] * mean_inv_depth[:, 0], frame_id < 0)
 
+                # warping
                 cam_points = self.backproject_depth[source_scale](
                     depth, inputs[("inv_K", source_scale)], self.batch_index)
                 pix_coords = self.project_3d[source_scale](
@@ -475,9 +482,11 @@ elf.batch_index = inputs['target_folder']       """
         """
         losses = {}
         total_loss = 0
+        total_reproj_loss = 0
 
         for scale in self.opt.scales:
             loss = 0
+            reprojloss_alone = 0
             reprojection_losses = []
             # print("before cat",reprojection_losses)
 
@@ -489,18 +498,18 @@ elf.batch_index = inputs['target_folder']       """
             disp = outputs[("disp", scale)]
             color = inputs[("color", 0, scale)]
             target = inputs[("color", 0, source_scale)]
-            print("target",target.size())
+            # print("target",target.size())
 
             for frame_id in self.opt.frame_ids[1:]:
                 # how is the warped computed?
                 # output computed from warping(see project 3D)
                 pred = outputs[("color", frame_id, scale)]
-                print("frame_id",frame_id)
-                print("pred",pred.size())
+                # print("frame_id",frame_id)
+                # print("pred",pred.size())
                 reprojection_losses.append(self.compute_reprojection_loss(pred, target))
             # print("before cat",reprojection_losses.size())
             reprojection_losses = torch.cat(reprojection_losses, 1)
-            print("after cat",reprojection_losses.size())
+            # print("after cat",reprojection_losses.size())
 
             if not self.opt.disable_automasking:
                 # 
@@ -552,6 +561,7 @@ elf.batch_index = inputs['target_folder']       """
             if combined.shape[1] == 1:
                 to_optimise = combined
             else:
+                no_optimise = combined
                 to_optimise, idxs = torch.min(combined, dim=1)
                 
                 # print('to_optimise size', to_optimise.size())
@@ -562,11 +572,13 @@ elf.batch_index = inputs['target_folder']       """
 
             if not self.opt.disable_automasking:
                 # hna ya3mal fel mask mais kifach yestakhdam fih?
+                # just lel visualisation
                 # not optimasing the loss on the masked area? 
                 outputs["identity_selection/{}".format(scale)] = (
                     idxs > identity_reprojection_loss.shape[1] - 1).float()
                 # print("identity_reprojection_loss.shape[1] - 1",((idxs > identity_reprojection_loss.shape[1] - 1).float()))
-
+            
+            reprojloss_alone += no_optimise.mean()
             loss += to_optimise.mean()
 
             # print('here is the loss', loss)
@@ -577,16 +589,25 @@ elf.batch_index = inputs['target_folder']       """
             smooth_loss = get_smooth_loss(norm_disp, color)
 
             loss += self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
+            reprojloss_alone += self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
+            
+            total_reproj_loss += reprojloss_alone
             total_loss += loss
+
             losses["loss/{}".format(scale)] = loss
+            # losses["reproj_loss/{}".format(scale)] = total_reproj_loss
+
 
         # experiment.log_metric('compare loss', loss.cpu().detach().numpy())
         total_loss /= self.num_scales
+        total_reproj_loss /= self.num_scales
         losses["loss"] = total_loss
+        losses["reproj_loss"] = total_reproj_loss
 
         #here they are not backpropagated just computed
         
-        # experiment.log_metric('total looss in compute loss', total_loss.cpu().detach().numpy(), epoch=self.epoch)
+        experiment.log_metric('total looss in compute loss', total_loss.cpu().detach().numpy(), epoch=self.epoch)
+        experiment.log_metric('total reproj looss in compute loss', total_reproj_loss.cpu().detach().numpy(), epoch=self.epoch)
         # experiment.log_metric('losses["loss"]', losses["loss"].cpu().detach().numpy(), epoch=self.step)
         # print('steo inside compute loss', self.step)
 
