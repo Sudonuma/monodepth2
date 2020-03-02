@@ -212,6 +212,8 @@ class Trainer:
         thisloss = 0
         reproj_loss_per_epoch = 0
         self.val_running_loss = 0
+        self.val_reproj_running_loss = 0
+
         for batch_idx, inputs in enumerate(self.train_loader):
 
             self.batch_index = inputs['target_folder']
@@ -258,7 +260,8 @@ class Trainer:
             # print('accumukate',thisloss)
             allloss.append(losses["loss"].cpu().detach().numpy())
             # print('you list',allloss)
-            self.val(self.val_running_loss)
+            self.val(self.val_running_loss, self.val_reproj_running_loss)
+            # self.val(self.val_reproj_running_loss)
             # print('in train loop',self.val_running_loss)
             # val_running_loss =  
             # print(self.step)
@@ -270,14 +273,18 @@ class Trainer:
         thisloss /= int(self.num_train_samples/self.opt.batch_size)
         reproj_loss_per_epoch /= int(self.num_train_samples/self.opt.batch_size)
         self.val_running_loss /= int(self.num_val_samples/self.opt.batch_size)
+        self.val_reproj_running_loss /= int(self.num_val_samples/self.opt.batch_size)
         # print('devide by',int(self.num_val_samples/self.opt.batch_size))
         print('average validation',self.val_running_loss)
+        print('average reprojection validation',self.val_reproj_running_loss)
+
         # print('average loss', thisloss)
         #experiment.log_metric('last batch loss', losses["loss"].cpu().detach().numpy(), epoch=self.epoch)
         experiment.log_metric('average loss druing training', thisloss, epoch=self.epoch)
         experiment.log_metric('average reprojection loss during training', reproj_loss_per_epoch, epoch=self.epoch)
         self.log("train", inputs, outputs, thisloss)
         experiment.log_metric('val loss ', self.val_running_loss, epoch=self.epoch)
+        experiment.log_metric('reproj val loss ', self.val_reproj_running_loss, epoch=self.epoch)
         self.log("val", inputs, outputs, self.val_running_loss)
 # self.log_time(batch_idx, duration, losses["loss"].cpu().data)
 
@@ -387,7 +394,7 @@ elf.batch_index = inputs['target_folder']       """
 
         return outputs
 
-    def val(self, val_running_loss):
+    def val(self, val_running_loss, val_reproj_running_loss):
         """Validate the model on a single minibatch
         """
         self.set_eval()
@@ -400,6 +407,7 @@ elf.batch_index = inputs['target_folder']       """
         with torch.no_grad():
             outputs, losses = self.process_batch(inputs)
             self.val_running_loss += losses["loss"].cpu().detach().numpy()
+            self.val_reproj_running_loss += losses["reproj_loss"].cpu().detach().numpy()
             # print('inside validation',self.val_running_loss)
             # if self.step % ((self.num_train_samples/self.opt.batch_size)-1) == 0:
             #     val_running_loss /= int(self.num_train_samples/self.opt.batch_size)
