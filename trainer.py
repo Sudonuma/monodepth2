@@ -26,10 +26,10 @@ import datasets
 import networks
 from IPython import embed
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
-
-experiment = Experiment(api_key="l6NAe3ZOaMzGNsrPmy78yRnEv", project_name="depth2", workspace="tehad", auto_metric_logging=False)
+experiment = Experiment(api_key="l6NAe3ZOaMzGNsrPmy78yRnEv", project_name="monodepth2", workspace="tehad", auto_metric_logging=False)
+#experiment = Experiment(api_key="l6NAe3ZOaMzGNsrPmy78yRnEv", project_name="depth2", workspace="tehad", auto_metric_logging=False)
 
 
 class Trainer:
@@ -210,6 +210,7 @@ class Trainer:
         self.set_train()
         allloss = []
         thisloss = 0
+        reproj_loss_per_epoch = 0
         self.val_running_loss = 0
         for batch_idx, inputs in enumerate(self.train_loader):
 
@@ -253,6 +254,7 @@ class Trainer:
 
                 # self.log("train", inputs, outputs, losses)
             thisloss += losses["loss"].cpu().detach().numpy()
+            reproj_loss_per_epoch += losses["reproj_loss"].cpu().detach().numpy()
             # print('accumukate',thisloss)
             allloss.append(losses["loss"].cpu().detach().numpy())
             # print('you list',allloss)
@@ -266,12 +268,14 @@ class Trainer:
             #here they are backprogated?
         self.log_time(batch_idx, duration, losses["loss"].cpu().data)
         thisloss /= int(self.num_train_samples/self.opt.batch_size)
+        reproj_loss_per_epoch /= int(self.num_train_samples/self.opt.batch_size)
         self.val_running_loss /= int(self.num_val_samples/self.opt.batch_size)
         # print('devide by',int(self.num_val_samples/self.opt.batch_size))
         print('average validation',self.val_running_loss)
         # print('average loss', thisloss)
-        experiment.log_metric('last batch loss', losses["loss"].cpu().detach().numpy(), epoch=self.epoch)
-        experiment.log_metric('average loss', thisloss, epoch=self.epoch)
+        #experiment.log_metric('last batch loss', losses["loss"].cpu().detach().numpy(), epoch=self.epoch)
+        experiment.log_metric('average loss druing training', thisloss, epoch=self.epoch)
+        experiment.log_metric('average reprojection loss during training', reproj_loss_per_epoch, epoch=self.epoch)
         self.log("train", inputs, outputs, thisloss)
         experiment.log_metric('val loss ', self.val_running_loss, epoch=self.epoch)
         self.log("val", inputs, outputs, self.val_running_loss)
@@ -316,13 +320,13 @@ elf.batch_index = inputs['target_folder']       """
 
         #also here are not backpropagated
         # experiment.log_metric('loss per batch', losses["loss"].cpu().detach().numpy())
-        print('begin////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////')
+        #print('begin////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////')
         # print("this is the output", outputs)
-        for key, value in outputs.items():
-            print('key',key, "value size",value.size())
-            if key == "('sample', -1, 0)":
-                print("dict key",value.size())
-        print('end/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////')
+        #for key, value in outputs.items():
+        #    print('key',key, "value size",value.size())
+        #    if key == "('sample', -1, 0)":
+        #        print("dict key",value.size())
+        #print('end/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////')
         return outputs, losses
 
     def predict_poses(self, inputs, features):
@@ -479,9 +483,11 @@ elf.batch_index = inputs['target_folder']       """
         """
         losses = {}
         total_loss = 0
+        total_reproj_loss = 0
 
         for scale in self.opt.scales:
             loss = 0
+            reprojloss_alone = 0
             reprojection_losses = []
 
             if self.opt.v1_multiscale:
@@ -545,12 +551,14 @@ elf.batch_index = inputs['target_folder']       """
             if combined.shape[1] == 1:
                 to_optimise = combined
             else:
+                no_optimise = combined
                 to_optimise, idxs = torch.min(combined, dim=1)
 
             if not self.opt.disable_automasking:
                 outputs["identity_selection/{}".format(scale)] = (
                     idxs > identity_reprojection_loss.shape[1] - 1).float()
 
+            reprojloss_alone += no_optimise.mean()
             loss += to_optimise.mean()
 
             # print('here is the loss', loss)
@@ -561,13 +569,18 @@ elf.batch_index = inputs['target_folder']       """
             smooth_loss = get_smooth_loss(norm_disp, color)
 
             loss += self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
+            reprojloss_alone += self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
+
+            total_reproj_loss += reprojloss_alone
             total_loss += loss
             losses["loss/{}".format(scale)] = loss
 
         # experiment.log_metric('compare loss', loss.cpu().detach().numpy())
         total_loss /= self.num_scales
+        total_reproj_loss /= self.num_scales
         losses["loss"] = total_loss
-
+        losses["reproj_loss"] = total_reproj_loss
+        
         #here they are not backpropagated just computed
         
         # experiment.log_metric('total looss in compute loss', total_loss.cpu().detach().numpy(), epoch=self.epoch)
