@@ -9,7 +9,7 @@ from comet_ml import Experiment
 
 import numpy as np
 import time
-
+import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -286,15 +286,65 @@ class Trainer:
         experiment.log_metric('val loss ', self.val_running_loss, epoch=self.epoch)
         experiment.log_metric('reproj val loss ', self.val_reproj_running_loss, epoch=self.epoch)
         self.log("val", inputs, outputs, self.val_running_loss)
-        for j in range(min(4, self.opt.batch_size)):
-            print('mask output to visualise',outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy().shape)
-            experiment.log_image(Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()),'L').convert('1'), name="identity_selection0")
+        for j in range(min(1, self.opt.batch_size)):
+            #print('mask output to visualise',outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy().shape)
+            #experiment.log_image(Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()),'L').convert('1'), name="identity_selection0")
+            mask = plt.figure()
+            automask = Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()))
+            mask_im =mask.add_subplot(1, 1, 1, frameon = False)
+            mask_im.imshow(automask, cmap = 'gist_gray')
+            experiment.log_figure(figure_name="automask_0/{}".format(j))
+   
+
+            disp = plt.figure()
+            disparity = normalize_image(outputs[("disp", 0)][j])
+            disparity = disparity.cpu().detach().numpy()
+            disparity = np.squeeze(disparity)
+            disparity = Image.fromarray(disparity)
+            disp_im = disp.add_subplot(1,1,1, frameon=False)
+            disp_im.imshow(disparity, cmap='magma')
+            experiment.log_figure(figure_name="disp_0/{}".format(j), figure=disp)
+
+
+           
 # self.log_time(batch_idx, duration, losses["loss"].cpu().data)
             # experiment.log_image(Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()),'L').convert('1'), name="identity_selection0")
         # for j in range(min(4, self.opt.batch_size)):  # write a maxmimum of four images
             # for s in self.opt.scales:
             for frame_id in self.opt.frame_ids:
-                experiment.log_image(inputs[("color", frame_id, s)][j].data, name= "color_{}_0/{}".format(frame_id, s, j))
+                #writer.add_image("color_pred_{}_{}/{}".format(frame_id, s, j), outputs[("color", frame_id, s)][j].data, self.step)
+
+                #print('input data',inputs[("color", frame_id, 0)][j].data.size())
+                #print('input data numpy shape',inputs[("color", frame_id, 0)][j].data.cpu().detach().numpy().shape)
+                if frame_id != 0:
+                   # writer.add_image("disp_{}/{}".format(s, j), normalize_image(outputs[("disp", s)][j]), self.step)
+                    fig = plt.figure()
+                    disp = plt.figure()
+
+                    #outputs[("color", frame_id, s)][j].data
+                    #print('disparity output',outputs[("disp", 0)][j])
+                    warped_image = outputs[("color", frame_id, 0)][j].permute(1, 2, 0).cpu().detach().numpy()
+                    disptonumpy = outputs[("disp", 0)][j].permute(1, 2, 0).cpu().detach().numpy()
+                    #print(disptonumpy)
+                    disparity = normalize_image(outputs[("disp", 0)][j])
+                    print(disparity.size())
+                    disparity = disparity.cpu().detach().numpy()
+                    disparity = np.squeeze(disparity)
+         
+                    print('disarity',disparity.shape)
+                    disparity = Image.fromarray(disparity)
+                    #fig = plt.figure()
+                
+                    #fig.figimage(input_image)
+                    im = fig.add_subplot(1,1,1, frameon=False)
+                    disp_im = disp.add_subplot(1,1,1, frameon=False)
+                    im.imshow(warped_image)
+                    disp_im.imshow(disparity, cmap='magma')
+                    experiment.log_figure(figure_name="color_pred_{}_0/{}".format(frame_id, j), figure=fig)
+                    #experiment.log_figure(figure_name="disp_0/{}".format(j), figure=disp)
+                #experiment.log_image(Image.fromarray(inputs[("color", frame_id, 0)][j].permute(1, 2, 0).cpu().detach().numpy(), 'RGB'), name= "color_{}_0/{}".format(frame_id, j))
+                #experiment.log_image(inputs[("color", frame_id, 0)][j],image_channels='first', name= "color_{}_0/{}".format(frame_id, j))
+                #experiment.log_image(Image.fromarray(np.squeeze(inputs[("color", frame_id, 0)][j].data.cpu().detach().numpy()), 'RGB'), name= "color_{}_0/{}".format(frame_id, j))
                 
                 # if s == 0 and frame_id != 0:
                 #     experiment.log_image("color_pred_{}_{}/{}".format(frame_id, s, j), outputs[("color", frame_id, s)][j].data, self.step)
@@ -303,6 +353,7 @@ class Trainer:
 
             # outputs[("color", frame_id, s)][j].data
             # inputs.pop('target_folder')
+            plt.close('all')
 
     def process_batch(self, inputs):
         """Pass a minibatch through the network and generate images and losses
@@ -661,29 +712,26 @@ elf.batch_index = inputs['target_folder']       """
         #experiment.log_metrics(losses.cpu().numpy())
         #for l, v in losses.items():
         #name = mode + "average loss"
-        #writer.add_scalar("{}".format(name), losses, self.step)
+            #writer.add_scalar("{}".format(name), losses, self.step)
             # experiment.log_metric("loss in log {}".format(l), v.cpu().detach().numpy(), epoch= self.step)
 
-        for j in range(min(4, self.opt.batch_size)):  # write a maxmimum of four images
+        for j in range(min(1, self.opt.batch_size)):  # write a maxmimum of four images
             for s in self.opt.scales:
                 for frame_id in self.opt.frame_ids:
-                    writer.add_image("color_{}_{}/{}".format(frame_id, s, j), inputs[("color", frame_id, s)][j].data, self.step)
+                    #writer.add_image("color_{}_{}/{}".format(frame_id, s, j), inputs[("color", frame_id, s)][j].data, self.step)
                     if s == 0 and frame_id != 0:
                         writer.add_image("color_pred_{}_{}/{}".format(frame_id, s, j), outputs[("color", frame_id, s)][j].data, self.step)
 
                         writer.add_image("disp_{}/{}".format(s, j), normalize_image(outputs[("disp", s)][j]), self.step)
 
-        #          if self.opt.predictive_mask:
-        #            for f_idx, frame_id in enumerate(self.opt.frame_ids[1:]):
-        #                 writer.add_image(
-        #                     "predictive_mask_{}_{}/{}".format(frame_id, s, j),
-        #                     outputs["predictive_mask"][("disp", s)][j, f_idx][None, ...],
-        #                     self.step)
+                    if self.opt.predictive_mask:
+                        for f_idx, frame_id in enumerate(self.opt.frame_ids[1:]):
+                             writer.add_image("predictive_mask_{}_{}/{}".format(frame_id, s, j), outputs["predictive_mask"][("disp", s)][j, f_idx][None, ...], self.step)
 
-        #         elif not self.opt.disable_automasking:
-        #             writer.add_image(
-        #                 "automask_{}/{}".format(s, j),
-        #                 outputs["identity_selection/{}".format(s)][j][None, ...], self.step)
+                    elif not self.opt.disable_automasking:
+                        writer.add_image(
+                            "automask_{}/{}".format(s, j),
+                            outputs["identity_selection/{}".format(s)][j][None, ...], self.step)
 
     def save_opts(self):
         """Save options to disk so we know what we ran this experiment with
