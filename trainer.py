@@ -15,7 +15,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
-
+from PIL import Image
 import json
 
 from utils import *
@@ -286,6 +286,9 @@ class Trainer:
         experiment.log_metric('val loss ', self.val_running_loss, epoch=self.epoch)
         experiment.log_metric('reproj val loss ', self.val_reproj_running_loss, epoch=self.epoch)
         self.log("val", inputs, outputs, self.val_running_loss)
+        for j in range(min(4, self.opt.batch_size)):
+            print('mask output to visualise',outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy().shape)
+            experiment.log_image(Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()),'L').convert('1'), name="identity_selection0")
 # self.log_time(batch_idx, duration, losses["loss"].cpu().data)
 
             # inputs.pop('target_folder')
