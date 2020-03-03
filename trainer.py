@@ -290,7 +290,18 @@ class Trainer:
             print('mask output to visualise',outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy().shape)
             experiment.log_image(Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()),'L').convert('1'), name="identity_selection0")
 # self.log_time(batch_idx, duration, losses["loss"].cpu().data)
+            # experiment.log_image(Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()),'L').convert('1'), name="identity_selection0")
+        # for j in range(min(4, self.opt.batch_size)):  # write a maxmimum of four images
+            # for s in self.opt.scales:
+            for frame_id in self.opt.frame_ids:
+                experiment.log_image(inputs[("color", frame_id, s)][j].data, name= "color_{}_0/{}".format(frame_id, s, j))
+                
+                # if s == 0 and frame_id != 0:
+                #     experiment.log_image("color_pred_{}_{}/{}".format(frame_id, s, j), outputs[("color", frame_id, s)][j].data, self.step)
 
+                #     writer.add_image("disp_{}/{}".format(s, j), normalize_image(outputs[("disp", s)][j]), self.step)
+
+            # outputs[("color", frame_id, s)][j].data
             # inputs.pop('target_folder')
 
     def process_batch(self, inputs):
