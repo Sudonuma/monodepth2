@@ -211,8 +211,10 @@ class Trainer:
         allloss = []
         thisloss = 0
         reproj_loss_per_epoch = 0
+        reproj_ID_per_epoch = 0
         self.val_running_loss = 0
         self.val_reproj_running_loss = 0
+        self.val_reproj_ID_running_loss = 0
 
         for batch_idx, inputs in enumerate(self.train_loader):
 
@@ -257,10 +259,11 @@ class Trainer:
                 # self.log("train", inputs, outputs, losses)
             thisloss += losses["loss"].cpu().detach().numpy()
             reproj_loss_per_epoch += losses["reproj_loss"].cpu().detach().numpy()
+            reproj_ID_per_epoch += losses["reproj_ID"].cpu().detach().numpy()
             # print('accumukate',thisloss)
             allloss.append(losses["loss"].cpu().detach().numpy())
             # print('you list',allloss)
-            self.val(self.val_running_loss, self.val_reproj_running_loss)
+            self.val(self.val_running_loss, self.val_reproj_running_loss, self.val_reproj_ID_running_loss)
             # self.val(self.val_reproj_running_loss)
             # print('in train loop',self.val_running_loss)
             # val_running_loss =  
@@ -272,19 +275,21 @@ class Trainer:
         self.log_time(batch_idx, duration, losses["loss"].cpu().data)
         thisloss /= int(self.num_train_samples/self.opt.batch_size)
         reproj_loss_per_epoch /= int(self.num_train_samples/self.opt.batch_size)
+        reproj_ID_per_epoch /= int(self.num_train_samples/self.opt.batch_size)
         self.val_running_loss /= int(self.num_val_samples/self.opt.batch_size)
         self.val_reproj_running_loss /= int(self.num_val_samples/self.opt.batch_size)
+        self.val_reproj_ID_running_loss /= int(self.num_val_samples/self.opt.batch_size)
         # print('devide by',int(self.num_val_samples/self.opt.batch_size))
-        print('average validation',self.val_running_loss)
-        print('average reprojection validation',self.val_reproj_running_loss)
+        print('average reprojection validation',self.val_running_loss)
+        print('average reprojection ID validation',self.val_reproj_ID_running_loss)
 
         # print('average loss', thisloss)
         #experiment.log_metric('last batch loss', losses["loss"].cpu().detach().numpy(), epoch=self.epoch)
-        experiment.log_metric('average loss druing training', thisloss, epoch=self.epoch)
-        experiment.log_metric('average reprojection loss during training', reproj_loss_per_epoch, epoch=self.epoch)
+        experiment.log_metric('average loss druing training (reprojection)', thisloss, epoch=self.epoch)
+        experiment.log_metric('average reprojection loss during training', reproj_ID_per_epoch, epoch=self.epoch)
         self.log("train", inputs, outputs, thisloss)
-        experiment.log_metric('val loss ', self.val_running_loss, epoch=self.epoch)
-        experiment.log_metric('reproj val loss ', self.val_reproj_running_loss, epoch=self.epoch)
+        experiment.log_metric('val reproj loss ', self.val_running_loss, epoch=self.epoch)
+        experiment.log_metric('reproj ID val loss ', self.val_reproj_ID_running_loss, epoch=self.epoch)
         self.log("val", inputs, outputs, self.val_running_loss)
         for j in range(min(1, self.opt.batch_size)):
             #print('mask output to visualise',outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy().shape)
@@ -459,7 +464,7 @@ elf.batch_index = inputs['target_folder']       """
 
         return outputs
 
-    def val(self, val_running_loss, val_reproj_running_loss):
+    def val(self, val_running_loss, val_reproj_running_loss, val_reproj_ID_running_loss):
         """Validate the model on a single minibatch
         """
         self.set_eval()
@@ -473,6 +478,7 @@ elf.batch_index = inputs['target_folder']       """
             outputs, losses = self.process_batch(inputs)
             self.val_running_loss += losses["loss"].cpu().detach().numpy()
             self.val_reproj_running_loss += losses["reproj_loss"].cpu().detach().numpy()
+            self.val_reproj_ID_running_loss += losses["reproj_ID"].cpu().detach().numpy()
             # print('inside validation',self.val_running_loss)
             # if self.step % ((self.num_train_samples/self.opt.batch_size)-1) == 0:
             #     val_running_loss /= int(self.num_train_samples/self.opt.batch_size)
@@ -557,10 +563,12 @@ elf.batch_index = inputs['target_folder']       """
         losses = {}
         total_loss = 0
         total_reproj_loss = 0
+        total_reproj_ID = 0
 
         for scale in self.opt.scales:
             loss = 0
             reprojloss_alone = 0
+            reprojloss_ID = 0
             reprojection_losses = []
 
             if self.opt.v1_multiscale:
@@ -578,12 +586,12 @@ elf.batch_index = inputs['target_folder']       """
 
             reprojection_losses = torch.cat(reprojection_losses, 1)
 
-            if not self.opt.disable_automasking:
-                identity_reprojection_losses = []
-                for frame_id in self.opt.frame_ids[1:]:
-                    pred = inputs[("color", frame_id, source_scale)]
-                    identity_reprojection_losses.append(
-                        self.compute_reprojection_loss(pred, target))
+            # if not self.opt.disable_automasking:
+            identity_reprojection_losses = []
+            for frame_id in self.opt.frame_ids[1:]:
+                pred = inputs[("color", frame_id, source_scale)]
+                identity_reprojection_losses.append(
+                    self.compute_reprojection_loss(pred, target))
 
                 identity_reprojection_losses = torch.cat(identity_reprojection_losses, 1)
 
@@ -612,19 +620,21 @@ elf.batch_index = inputs['target_folder']       """
             else:
                 reprojection_loss = reprojection_losses
 
-            if not self.opt.disable_automasking:
+            # if not self.opt.disable_automasking:
                 # add random numbers to break ties
-                identity_reprojection_loss += torch.randn(
-                    identity_reprojection_loss.shape).cuda() * 0.00001
-
+            identity_reprojection_loss += torch.randn(
+                identity_reprojection_loss.shape).cuda() * 0.00001
+            if not self.opt.disable_automasking:
                 combined = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
             else:
                 combined = reprojection_loss
+                combined_ID = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
 
             if combined.shape[1] == 1:
                 to_optimise = combined
             else:
                 no_optimise = combined
+                no_optimise_ID = combined_ID
                 to_optimise, idxs = torch.min(combined, dim=1)
 
             if not self.opt.disable_automasking:
@@ -632,6 +642,7 @@ elf.batch_index = inputs['target_folder']       """
                     idxs > identity_reprojection_loss.shape[1] - 1).float()
 
             reprojloss_alone += no_optimise.mean()
+            reprojloss_ID += no_optimise_ID.mean()
             loss += to_optimise.mean()
 
             # print('here is the loss', loss)
@@ -643,16 +654,20 @@ elf.batch_index = inputs['target_folder']       """
 
             loss += self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
             reprojloss_alone += self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
+            reprojloss_ID += self.opt.disparity_smoothness * smooth_loss / (2 ** scale)
 
             total_reproj_loss += reprojloss_alone
+            total_reproj_ID += reprojloss_ID
             total_loss += loss
             losses["loss/{}".format(scale)] = loss
 
         # experiment.log_metric('compare loss', loss.cpu().detach().numpy())
         total_loss /= self.num_scales
         total_reproj_loss /= self.num_scales
+        total_reproj_ID /= self.num_scales
         losses["loss"] = total_loss
         losses["reproj_loss"] = total_reproj_loss
+        losses["reproj_ID"] = total_reproj_ID
         
         #here they are not backpropagated just computed
         
