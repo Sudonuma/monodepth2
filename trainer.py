@@ -1,4 +1,4 @@
-# Copyright Niantic 2019. Patent Pending. All rights reserved.
+#copyright Niantic 2019. Patent Pending. All rights reserved.
 #
 # This software is licensed under the terms of the Monodepth2 licence
 # which allows for non-commercial use only, the full terms of which are made
@@ -285,20 +285,21 @@ class Trainer:
 
         # print('average loss', thisloss)
         #experiment.log_metric('last batch loss', losses["loss"].cpu().detach().numpy(), epoch=self.epoch)
-        experiment.log_metric('average loss druing training (reprojection)', thisloss, epoch=self.epoch)
-        experiment.log_metric('average reprojection loss during training', reproj_ID_per_epoch, epoch=self.epoch)
+        experiment.log_metric('average loss druing training (reprojection only)', thisloss, epoch=self.epoch)
+        experiment.log_metric('average reprojection and ID loss during training', reproj_ID_per_epoch, epoch=self.epoch)
         self.log("train", inputs, outputs, thisloss)
-        experiment.log_metric('val reproj loss ', self.val_running_loss, epoch=self.epoch)
+        experiment.log_metric('val reproj loss only', self.val_running_loss, epoch=self.epoch)
         experiment.log_metric('reproj ID val loss ', self.val_reproj_ID_running_loss, epoch=self.epoch)
         self.log("val", inputs, outputs, self.val_running_loss)
         for j in range(min(1, self.opt.batch_size)):
             #print('mask output to visualise',outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy().shape)
             #experiment.log_image(Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()),'L').convert('1'), name="identity_selection0")
-            mask = plt.figure()
-            automask = Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()))
-            mask_im =mask.add_subplot(1, 1, 1, frameon = False)
-            mask_im.imshow(automask, cmap = 'gist_gray')
-            experiment.log_figure(figure_name="automask_0/{}".format(j))
+            if not self.opt.disable_automasking:
+                mask = plt.figure()
+                automask = Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()))
+                mask_im =mask.add_subplot(1, 1, 1, frameon = False)
+                mask_im.imshow(automask, cmap = 'gist_gray')
+                experiment.log_figure(figure_name="automask_0/{}".format(j))
    
 
             disp = plt.figure()
@@ -593,15 +594,15 @@ elf.batch_index = inputs['target_folder']       """
                 identity_reprojection_losses.append(
                     self.compute_reprojection_loss(pred, target))
 
-                identity_reprojection_losses = torch.cat(identity_reprojection_losses, 1)
+            identity_reprojection_losses = torch.cat(identity_reprojection_losses, 1)
 
-                if self.opt.avg_reprojection:
-                    identity_reprojection_loss = identity_reprojection_losses.mean(1, keepdim=True)
-                else:
-                    # save both images, and do min all at once below
-                    identity_reprojection_loss = identity_reprojection_losses
+            if self.opt.avg_reprojection:
+                identity_reprojection_loss = identity_reprojection_losses.mean(1, keepdim=True)
+            else:
+                # save both images, and do min all at once below
+                identity_reprojection_loss = identity_reprojection_losses
 
-            elif self.opt.predictive_mask:
+            if self.opt.predictive_mask:
                 # use the predicted mask
                 mask = outputs["predictive_mask"]["disp", scale]
                 if not self.opt.v1_multiscale:
@@ -626,6 +627,7 @@ elf.batch_index = inputs['target_folder']       """
                 identity_reprojection_loss.shape).cuda() * 0.00001
             if not self.opt.disable_automasking:
                 combined = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
+                combined_ID = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
             else:
                 combined = reprojection_loss
                 combined_ID = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
@@ -805,3 +807,4 @@ elf.batch_index = inputs['target_folder']       """
             self.model_optimizer.load_state_dict(optimizer_dict)
         else:
             print("Cannot find Adam weights so Adam is randomly initialized")
+
