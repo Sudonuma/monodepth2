@@ -285,11 +285,13 @@ class Trainer:
 
         # print('average loss', thisloss)
         #experiment.log_metric('last batch loss', losses["loss"].cpu().detach().numpy(), epoch=self.epoch)
-        experiment.log_metric('average loss druing training (reprojection only)', thisloss, epoch=self.epoch)
-        experiment.log_metric('average reprojection and ID loss during training', reproj_ID_per_epoch, epoch=self.epoch)
+        experiment.log_metric('average loss druing training (reprojection)', reproj_loss_per_epoch, epoch=self.epoch)
+        experiment.log_metric('average loss during training (reprojection and ID)', reproj_ID_per_epoch, epoch=self.epoch)
+
         self.log("train", inputs, outputs, thisloss)
-        experiment.log_metric('val reproj loss only', self.val_running_loss, epoch=self.epoch)
-        experiment.log_metric('reproj ID val loss ', self.val_reproj_ID_running_loss, epoch=self.epoch)
+
+        experiment.log_metric('val reproj loss ', self.val_reproj_running_loss, epoch=self.epoch)
+        experiment.log_metric('val reproj ID loss ', self.val_reproj_ID_running_loss, epoch=self.epoch)
         self.log("val", inputs, outputs, self.val_running_loss)
         for j in range(min(1, self.opt.batch_size)):
             #print('mask output to visualise',outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy().shape)
