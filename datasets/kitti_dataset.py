@@ -278,7 +278,25 @@ class KITTIDataset(MonoDataset):
             # color = color.transpose(pil.FLIP_LEFT_RIGHT)
             depth_gt = np.fliplr(depth_gt)
         depth_gt = Image.fromarray(depth_gt)
-        
+        # width, height = depth_gt.size
+        # pixels = depth_gt.load()
+        # all_pixels = []
+        # for x in range(width):
+        #     for y in range(height):
+        #         cpixel = pixels[x, y]
+        #         all_pixels.append(cpixel)
+        # x = []
+        # # print(all_pixels)
+        # for i in all_pixels:
+        #     if i != 0:
+        #         x.append(i)
+        #         print("after image ", i)
+        # depth_gt1 = np.load(self.get_depth_path(folder, frame_index, side))
+        # for i in range(depth_gt1.shape[0]):
+        #     for j in range(depth_gt1.shape[1]):
+        #         if depth_gt1[i, j] != 0:
+        #             print('before changing to image', depth_gt[i, j]/1000)      
+        # crop and rescale notrescale directly          
         return depth_gt
 
 

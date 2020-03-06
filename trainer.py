@@ -15,7 +15,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
-
+from PIL import Image
+import matplotlib.pyplot as plt
 import json
 
 from utils import *
@@ -276,6 +277,19 @@ class Trainer:
         self.log("train", inputs, outputs, thisloss)
         experiment.log_metric('val loss ', self.val_running_loss, epoch=self.epoch)
         self.log("val", inputs, outputs, self.val_running_loss)
+        
+        for j in range(min(1, self.opt.batch_size)):
+            #print('mask output to visualise',outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy().shape)
+            #experiment.log_image(Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()),'L').convert('1'), name="identity_selection0")
+            if not self.opt.disable_automasking:
+                mask = plt.figure()
+                automask = Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()))
+                mask_im =mask.add_subplot(1, 1, 1, frameon = False)
+                mask_im.imshow(automask, cmap = 'gist_gray')
+                experiment.log_figure(figure_name="automask_0/{}".format(j))
+
+
+
 # self.log_time(batch_idx, duration, losses["loss"].cpu().data)
 
             # inputs.pop('target_folder')
@@ -488,19 +502,21 @@ elf.batch_index = inputs['target_folder']       """
 
             disp = outputs[("disp", scale)]
             color = inputs[("color", 0, scale)]
+            gt = inputs["ground_truth", 0, scale]
+            # print(gt)
             target = inputs[("color", 0, source_scale)]
-            print("target",target.size())
+            #print("target",target.size())
 
             for frame_id in self.opt.frame_ids[1:]:
                 # how is the warped computed?
                 # output computed from warping(see project 3D)
                 pred = outputs[("color", frame_id, scale)]
-                print("frame_id",frame_id)
-                print("pred",pred.size())
+                # print("frame_id",frame_id)
+                # print("pred",pred.size())
                 reprojection_losses.append(self.compute_reprojection_loss(pred, target))
             # print("before cat",reprojection_losses.size())
             reprojection_losses = torch.cat(reprojection_losses, 1)
-            print("after cat",reprojection_losses.size())
+            # print("after cat",reprojection_losses.size())
 
             if not self.opt.disable_automasking:
                 # 
@@ -548,11 +564,20 @@ elf.batch_index = inputs['target_folder']       """
                 # print('combined size', combined.size())
             else:
                 combined = reprojection_loss
+                
 
             if combined.shape[1] == 1:
                 to_optimise = combined
             else:
                 to_optimise, idxs = torch.min(combined, dim=1)
+                repoj, ids = torch.min(reprojection_loss, dim=1)
+                # print("dim of to optimize",to_optimise.size())
+                # print('reprojection_loss size',repoj.size())
+                x = torch.where(inputs["ground_truth", 0, 0]>0, repoj, to_optimise)
+                x = torch.squeeze(x, dim=1)
+                # print(x.size())
+                optim = x
+                # torch.where(gt > 0), khouth el reprojection, sinon khouth el torch.mean)
                 
                 # print('to_optimise size', to_optimise.size())
                 # print('idxs size', idxs.size())
@@ -563,11 +588,25 @@ elf.batch_index = inputs['target_folder']       """
             if not self.opt.disable_automasking:
                 # hna ya3mal fel mask mais kifach yestakhdam fih?
                 # not optimasing the loss on the masked area? 
-                outputs["identity_selection/{}".format(scale)] = (
-                    idxs > identity_reprojection_loss.shape[1] - 1).float()
+                # l = torch.where(gt>0, do not mask, mask) now visualise it first
+                # l = torch.where(gt>0, 0, 1)
+                l = torch.where(inputs["ground_truth", 0, 0]>0 , torch.Tensor([0]).cuda(), torch.Tensor([1]).cuda())
+                l = torch.squeeze(l)
+
+                # print('l size is ', l.size())
+                outputs["identity_selection/{}".format(scale)] = (idxs > identity_reprojection_loss.shape[1] - 1).float()
+                # print('identity size', outputs["identity_selection/{}".format(scale)].size())
+                x = torch.where(inputs["ground_truth", 0, 0]>0 , torch.Tensor([0]).cuda(), outputs["identity_selection/{}".format(scale)])
+                # print('x size is before squeeze ', x.size())
+                x = torch.squeeze(x, dim=1)
+                # print('x size is ', x.size())
+                outputs["identity_selection/{}".format(scale)] = x
+                # l = torch.where(inputs["ground_truth", 0, scale]>0 , torch.Tensor([0]).cuda(), outputs["identity_selection/{}".format(scale)])
+                
                 # print("identity_reprojection_loss.shape[1] - 1",((idxs > identity_reprojection_loss.shape[1] - 1).float()))
 
-            loss += to_optimise.mean()
+            # loss += to_optimise.mean()
+            loss += optim.mean()
 
             # print('here is the loss', loss)
             # experiment.log_metric('compare loss', loss.cpu().detach().numpy())
