@@ -12,6 +12,7 @@ import os
 import skimage.transform
 import numpy as np
 import PIL.Image as pil
+from scipy import ndimage
 from PIL import Image  # using pillow-simd for increased speed
 
 
@@ -297,6 +298,41 @@ class KITTIDataset(MonoDataset):
         if do_flip:
             # color = color.transpose(pil.FLIP_LEFT_RIGHT)
             depth_gt = np.fliplr(depth_gt)
+        #struct2 = ndimage.generate_binary_structure(4, 4)
+        #cond = np.where(depth_gt!=0)
+        #print(cond, "last raw f ones check oit here")
+        struct2 = np.array([
+      
+       #[ False,  False,  False, False, False],
+       #[ False,  False,  False, False, False],
+       #[ False,  False,  True, False, False],
+       #[ False,  True,  True, False, False],
+       #[ False,  True,  True, True, False],
+       #[ True,  True,  True, True, True],
+       #[ True,  True,  True, True, True],
+       #[ True,  True,  True, True, True],
+       #[ True,  True,  True, True, True],
+       #[ False,  True,  True, True, False],
+       #[ False,  True,  True, False, False],
+       #[ False,  False,  True, True, True False, False],
+       #[ False,  True,  True, True, True, True, False],
+       #[ True,  True,  True, True, True, True, True],
+       #[ False,  False,  True, True, True False, False],
+       #[ False,  True,  True, True, True, True, False],
+       
+       #[ False,  False,  False, True, True, True, True, True, False, False, False],
+       #[ False,  False, True, True, True, True, True, True, True ,False, False],
+       #[ False, True, True, True, True, True, True, True, True, True, False],
+       #[ True, True, True, True, True,  True,  True, True, True, True, True]])
+       # [chouf tzidchi kolou false]i
+       # [False, False, False, False, False],
+        [False, False, True, False, False],
+        [False, True, True, True, False],
+        [True, True, True, True, True]])
+        
+        depth_gt = ndimage.binary_erosion(depth_gt, structure=struct2, iterations=10).astype(depth_gt.dtype)
+        cond = np.where(depth_gt!=0)
+        #depth_gt[70:cond[0][0]][:] = depth_gt[cond[0][0]][:]
         depth_gt = Image.fromarray(depth_gt)
         # width, height = depth_gt.size
         # pixels = depth_gt.load()

@@ -27,7 +27,7 @@ import datasets
 import networks
 from IPython import embed
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
 experiment = Experiment(api_key="l6NAe3ZOaMzGNsrPmy78yRnEv", project_name="monodepth2", workspace="tehad", auto_metric_logging=False)
 #experiment = Experiment(api_key="l6NAe3ZOaMzGNsrPmy78yRnEv", project_name="depth2", workspace="tehad", auto_metric_logging=False)
@@ -290,17 +290,17 @@ class Trainer:
         experiment.log_metric('average loss druing training (reprojection)', reproj_loss_per_epoch, epoch=self.epoch)
         experiment.log_metric('average loss during training (reprojection and ID)', reproj_ID_per_epoch, epoch=self.epoch)
 
-        self.log("train", inputs, outputs, thisloss)
+        #self.log("train", inputs, outputs, thisloss)
 
         experiment.log_metric('val reproj loss ', self.val_reproj_running_loss, epoch=self.epoch)
         experiment.log_metric('val reproj ID loss ', self.val_reproj_ID_running_loss, epoch=self.epoch)
-        self.log("val", inputs, outputs, self.val_running_loss)
+        #self.log("val", inputs, outputs, self.val_running_loss)
         for j in range(min(1, self.opt.batch_size)):
             #print('mask output to visualise',outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy().shape)
             #experiment.log_image(Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()),'L').convert('1'), name="identity_selection0")
             if not self.opt.disable_automasking:
                 mask = plt.figure()
-                automask = Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()))
+                automask = Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][0][j][None, ...].cpu().detach().numpy()))
                 mask_im =mask.add_subplot(1, 1, 1, frameon = False)
                 mask_im.imshow(automask, cmap = 'gist_gray')
                 experiment.log_figure(figure_name="automask_0/{}".format(j))
@@ -493,7 +493,7 @@ elf.batch_index = inputs['target_folder']       """
             # if "depth_gt" in inputs:
             #     self.compute_depth_losses(inputs, outputs, losses)
 
-            self.log("val", inputs, outputs, losses)
+            #self.log("val", inputs, outputs, losses)
             del inputs, outputs, losses
 
         self.set_train()
@@ -678,11 +678,11 @@ elf.batch_index = inputs['target_folder']       """
                 # print('l size is ', l.size())
                 outputs["identity_selection/{}".format(scale)] = (idxs > identity_reprojection_loss.shape[1] - 1).float()
                 # print('identity size', outputs["identity_selection/{}".format(scale)].size())
-                x = torch.where(inputs["ground_truth", 0, 0]>0 , torch.Tensor([0]).cuda(), outputs["identity_selection/{}".format(scale)])
+                x1 = torch.where(inputs["ground_truth", 0, 0]>0 , torch.Tensor([1]).cuda(), outputs["identity_selection/{}".format(scale)])
                 # print('x size is before squeeze ', x.size())
-                x = torch.squeeze(x, dim=1)
+                x1 = torch.squeeze(x1, dim=1)
                 # print('x size is ', x.size())
-                outputs["identity_selection/{}".format(scale)] = x
+                outputs["identity_selection/{}".format(scale)] = x1
                 # l = torch.where(inputs["ground_truth", 0, scale]>0 , torch.Tensor([0]).cuda(), outputs["identity_selection/{}".format(scale)])
                 
                 # print("identity_reprojection_loss.shape[1] - 1",((idxs > identity_reprojection_loss.shape[1] - 1).float()))
