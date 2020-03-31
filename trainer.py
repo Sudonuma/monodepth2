@@ -237,6 +237,9 @@ class Trainer:
             # print('this is the loss AFTER backprop', losses["loss"].cpu().detach().numpy())
 
             duration = time.time() - before_op_time
+            self.compute_depth_losses(inputs, outputs, losses)
+            
+            print("losses are", losses["de/rms"])
             # experiment.log_metric('loss after backprop', losses["loss"].cpu().detach().numpy(), epoch=self.step)
             # print('step after backrop', self.step)
             
@@ -514,6 +517,7 @@ elf.batch_index = inputs['target_folder']       """
             _, depth = disp_to_depth(disp, self.opt.min_depth, self.opt.max_depth)
 
             outputs[("depth", 0, scale)] = depth
+        #print('maximum depth',torch.max(outputs[("depth", 0, 0)]))
 
             for i, frame_id in enumerate(self.opt.frame_ids[1:]):
 
@@ -549,6 +553,7 @@ elf.batch_index = inputs['target_folder']       """
                 if not self.opt.disable_automasking:
                     outputs[("color_identity", frame_id, scale)] = \
                         inputs[("color", frame_id, source_scale)]
+        #print('maximum depth',torch.max(outputs[("depth", 0, 0)]))
 
     def compute_reprojection_loss(self, pred, target):
         """Computes reprojection loss between a batch of predicted and target images
@@ -739,19 +744,26 @@ elf.batch_index = inputs['target_folder']       """
             depth_pred, [1080, 1920], mode="bilinear", align_corners=False), 1e-3, 80)
         
         depth_pred = depth_pred.detach()
+        #print(depth_pred)
 
         depth_gt = inputs["depth_gt"]
+        #print("ground truth depth",depth_gt)
         mask = depth_gt > 0
 
         # garg/eigen crop
-        crop_mask = torch.zeros_like(mask)
-        crop_mask[:, :, 153:371, 44:1197] = 1
-        mask = mask * crop_mask
+        #crop_mask = torch.zeros_like(mask)
+        #crop_mask[:, :, 153:371, 44:1197] = 1
+        #mask = mask * crop_mask
 
         depth_gt = depth_gt[mask]
         depth_pred = depth_pred[mask]
+        print('ground truth',depth_gt.size())
+        print('depth pred',depth_pred.size())
+        #print('size of median gt',torch.median(depth_gt))
+        #print('size of median pred',torch.median(depth_pred))
         depth_pred *= torch.median(depth_gt) / torch.median(depth_pred)
-
+        print(depth_pred)
+        print(depth_gt)
         depth_pred = torch.clamp(depth_pred, min=1e-3, max=80)
 
         depth_errors = compute_depth_errors(depth_gt, depth_pred)

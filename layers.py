@@ -21,6 +21,10 @@ def disp_to_depth(disp, min_depth, max_depth):
     min_disp = 1 / max_depth
     max_disp = 1 / min_depth
     scaled_disp = min_disp + (max_disp - min_disp) * disp
+   # depth = 1039.7880938825083*0.54 / scaled_disp
+    #depth = 720*0.54/disp
+    #print("relative depth inside disp to depth",depth)
+    #print('maximum depth',torch.max(depth))
     depth = 1 / scaled_disp
     return scaled_disp, depth
 
@@ -267,7 +271,7 @@ def compute_depth_errors(gt, pred):
 
     rmse = (gt - pred) ** 2
     rmse = torch.sqrt(rmse.mean())
-
+    #print('rmse: gt, pred', rmse)
     rmse_log = (torch.log(gt) - torch.log(pred)) ** 2
     rmse_log = torch.sqrt(rmse_log.mean())
 
