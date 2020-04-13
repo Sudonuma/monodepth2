@@ -48,6 +48,7 @@ class MonoDataset(data.Dataset):
     def __init__(self,
                  data_path,
                  filenames,
+                 gt_filenames,
                  height,
                  width,
                  frame_idxs,
@@ -58,6 +59,9 @@ class MonoDataset(data.Dataset):
 
         self.data_path = data_path
         self.filenames = filenames
+
+        self.gt_filenames = gt_filenames
+
         self.height = height
         self.width = width
         self.num_scales = num_scales
@@ -175,7 +179,17 @@ class MonoDataset(data.Dataset):
         do_flip = self.is_train and random.random() > 0.5
         #print('this is the index',index)
         line = self.filenames[index].split()
+        gt_line = self.gt_filenames[index].split()
+        
+        #print('line is', line)
         folder = line[0]
+        self.file_number = int(line[1])
+        self.file_number_gt = int(gt_line[1])
+        print('ground truth file number', self.file_number_gt)
+        #if self.file_number == self.file_number_gt:
+         #   print('file exists: gt file = ', self.file_number_gt, 'file = ', self.file_number)
+        #else:
+        #    print('file does noy exists: file = ', self.file_number)
         self.folder = folder
         #print('this is self folder in monodataset class',self.folder)
 

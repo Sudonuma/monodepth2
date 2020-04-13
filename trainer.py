@@ -123,9 +123,18 @@ class Trainer:
         self.dataset = datasets_dict[self.opt.dataset]
 
         fpath = os.path.join(os.path.dirname(__file__), "splits", self.opt.split, "{}_files.txt")
+        
+        ########################################## adding ground truth ##############################################################
+        gt_filenames = readlines(fpath.format("gt"))      
 
         train_filenames = readlines(fpath.format("train"))
         val_filenames = readlines(fpath.format("val"))
+
+ ########################################## adding ground truth ##############################################################
+        num_gt_samples = len(gt_filenames)
+
+
+
         img_ext = '.png' if self.opt.png else '.jpg'
 
         num_train_samples = len(train_filenames)
@@ -136,15 +145,33 @@ class Trainer:
 
         self.num_total_steps = num_train_samples // self.opt.batch_size * self.opt.num_epochs
 
+        #train_dataset = self.dataset(
+         #   self.opt.data_path, train_filenames, self.opt.height, self.opt.width,
+          #  self.opt.frame_ids, 4, is_train=True, img_ext=img_ext)
+        
+ ########################################## adding ground truth ##############################################################
         train_dataset = self.dataset(
-            self.opt.data_path, train_filenames, self.opt.height, self.opt.width,
+            self.opt.data_path, train_filenames, gt_filenames, self.opt.height, self.opt.width,
             self.opt.frame_ids, 4, is_train=True, img_ext=img_ext)
+
+
+
+
         self.train_loader = DataLoader(
             train_dataset, self.opt.batch_size, True,
             num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
+        #val_dataset = self.dataset(
+        #    self.opt.data_path, val_filenames, self.opt.height, self.opt.width,
+        #    self.opt.frame_ids, 4, is_train=False, img_ext=img_ext)
+
+########################################## adding ground truth ##############################################################
         val_dataset = self.dataset(
-            self.opt.data_path, val_filenames, self.opt.height, self.opt.width,
-            self.opt.frame_ids, 4, is_train=False, img_ext=img_ext)
+            self.opt.data_path, val_filenames, gt_filenames, self.opt.height, self.opt.width,
+            self.opt.frame_ids, 4, is_train=False, img_ext=img_ext)        
+
+
+
+
         self.val_loader = DataLoader(
             val_dataset, self.opt.batch_size, True,
             num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
@@ -239,7 +266,7 @@ class Trainer:
             duration = time.time() - before_op_time
             self.compute_depth_losses(inputs, outputs, losses)
             
-            print("losses are", losses["de/rms"])
+            #################################print("losses are", losses["de/rms"])
             # experiment.log_metric('loss after backprop', losses["loss"].cpu().detach().numpy(), epoch=self.step)
             # print('step after backrop', self.step)
             
@@ -576,6 +603,45 @@ elf.batch_index = inputs['target_folder']       """
         total_loss = 0
         total_reproj_loss = 0
         total_reproj_ID = 0
+        
+        ########################################## L2 loss from compute depth losses #####################################################################
+        depth_pred = outputs[("depth", 0, 0)]
+        
+        #depth_pred = torch.clamp(F.interpolate(
+        #    depth_pred, [1080, 1920], mode="bilinear", align_corners=False), 1e-3, 80)
+        
+
+        #depth_pred_t = F.interpolate(depth_pred, [1080, 1920], mode="bilinear", align_corners=False)
+        #depth_pred = depth_pred.detach()
+
+        #depth_t = inputs["depth_gt"]
+        depth_gt = inputs["ground_truth", 0, 0]
+        print('size of input depth',depth_gt.size())
+        mask = depth_gt > 0
+        #mask1 = depth_t > 0
+        depth_formean = depth_gt[mask]
+        depth_predmean = depth_pred[mask]
+        #depth_gt = F.interpolate(
+        #    depth_gt, [192, 640], mode="bilinear", align_corners=False)
+        #l = torch.where(inputs["ground_truth", 0, 0]>0 , torch.Tensor([0]).cuda(), torch.Tensor([1]).cuda())
+        
+        #print('depth predsize', depth_pred.size())
+        #print('gt size', depth_gt.size())
+        depth_pred = torch.where(depth_gt>0, depth_pred, torch.Tensor([0]).cuda())
+        
+        # a3mal elmean kan al blayes ela fihomch zero
+        depth_pred *= torch.mean(depth_formean) / torch.mean(depth_predmean)
+        print("mean with mask", torch.mean(depth_formean) / torch.mean(depth_predmean))
+        #print("mean without mask", torch.mean(depth_gt) / torch.mean(depth_pred))
+        #print('depth predsize', depth_pred.size())
+        #print('gt size', depth_gt.size())
+        #depth_pred = torch.clamp(depth_pred, min=1e-3, max=80)
+        l2loss = nn.MSELoss(reduce=False, reduction='none')
+        l2loss_gt_pred = l2loss(depth_gt, depth_pred)
+        l2loss_gt_pred = torch.squeeze(l2loss_gt_pred)
+        print('l2loss_gt_pred', l2loss_gt_pred.size())
+        #print('l2loss ground truth prediction loss', l2loss_gt_pred.size())
+        ########################################## L2 loss from compute depth losses #####################################################################
 
         for scale in self.opt.scales:
             loss = 0
@@ -653,14 +719,16 @@ elf.batch_index = inputs['target_folder']       """
 
             if combined.shape[1] == 1:
                 to_optimise = combined
+                print('to optimize size',to_optimize.size())
             else:
                 no_optimise = combined
                 no_optimise_ID = combined_ID
                 to_optimise, idxs = torch.min(combined, dim=1)
+                print('to optimize size',to_optimise.size())
                 repoj, ids = torch.min(reprojection_loss, dim=1)
                 # print("dim of to optimize",to_optimise.size())
                 # print('reprojection_loss size',repoj.size())
-                x = torch.where(inputs["ground_truth", 0, 0]>0, repoj, to_optimise)
+                x = torch.where(inputs["ground_truth", 0, 0]>0, l2loss_gt_pred, to_optimise)
                 x = torch.squeeze(x, dim=1)
                 # print(x.size())
                 optim = x
@@ -757,13 +825,15 @@ elf.batch_index = inputs['target_folder']       """
 
         depth_gt = depth_gt[mask]
         depth_pred = depth_pred[mask]
-        print('ground truth',depth_gt.size())
-        print('depth pred',depth_pred.size())
+        #print('ground truth',depth_gt.size())
+        #print('depth pred',depth_pred.size())
         #print('size of median gt',torch.median(depth_gt))
         #print('size of median pred',torch.median(depth_pred))
-        depth_pred *= torch.median(depth_gt) / torch.median(depth_pred)
-        print(depth_pred)
-        print(depth_gt)
+        # jarrab nahiha
+        # depth_pred *= torch.median(depth_gt) / torch.median(depth_pred)
+        depth_pred *= torch.mean(depth_gt) / torch.mean(depth_pred)
+        #print(depth_pred)
+        #print(depth_gt)
         depth_pred = torch.clamp(depth_pred, min=1e-3, max=80)
 
         depth_errors = compute_depth_errors(depth_gt, depth_pred)
