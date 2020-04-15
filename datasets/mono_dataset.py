@@ -178,14 +178,36 @@ class MonoDataset(data.Dataset):
         do_color_aug = self.is_train and random.random() > 0.5
         do_flip = self.is_train and random.random() > 0.5
         #print('this is the index',index)
+        #print('filename is',self.filenames)
         line = self.filenames[index].split()
+
+        #check if you have ground truth for that specefic image
+        filenames_list = []
+        for idx, i in enumerate(self.gt_filenames):
+            filenames_list.append(i.split())
+
+        files = np.asarray(filenames_list)
+        list_of_files = files[:,1]
+        print('list of files is',list_of_files)
+        print('file is ',line[1])
+        if str(line[1]) in list_of_files:
+            print("ok")
+        else:
+            print("not ok")
+        #check if you have ground truth for that specefic image
+
+
+
         gt_line = self.gt_filenames[index].split()
         
         #print('line is', line)
+        #print()
         folder = line[0]
+        gt_folder = gt_line[0]
         self.file_number = int(line[1])
         self.file_number_gt = int(gt_line[1])
-        print('ground truth file number', self.file_number_gt)
+        #print('ground truth file number', self.file_number_gt, 'gt folder', gt_folder)
+        #print("file number", self.file_number, "folder", folder)
         #if self.file_number == self.file_number_gt:
          #   print('file exists: gt file = ', self.file_number_gt, 'file = ', self.file_number)
         #else:
@@ -212,8 +234,18 @@ class MonoDataset(data.Dataset):
 
         
         for i in self.frame_idxs:
-            inputs[("ground_truth", i, -1)] = self.get_gtdepth(folder, frame_index + i, side, do_flip)
+            #inputs[("ground_truth", i, -1)] = self.get_gtdepth(folder, frame_index + i, side, do_flip)
+            if line[1] in list_of_files:
+            # print("ok")
+                inputs[("ground_truth", i, -1)] = self.get_gtdepth(folder, frame_index + i, side, do_flip)
+            else:
+                x = np.zeros((1920,1080))
+                inputs[("ground_truth", i, -1)] = Image.fromarray(x)
 
+
+
+
+            #print(inputs[("ground_truth", i, -1)].size, "size of ground truth as PIL")
         # adjusting intrinsics to match each scale in the pyramid
         for scale in range(self.num_scales):
             K = self.K.copy()

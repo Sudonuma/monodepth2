@@ -183,20 +183,20 @@ class KITTIDataset(MonoDataset):
                           [0, 0, 1, 0],
                           [0, 0, 0, 1]],
 
-                          [[0.58, 0, 0.5, 0],
-                          [0, 1.92, 0.5, 0],
-                          [0, 0, 1, 0],
-                          [0, 0, 0, 1]],
+                          #[[0.58, 0, 0.5, 0],
+                          #[0, 1.92, 0.5, 0],
+                          #[0, 0, 1, 0],
+                          #[0, 0, 0, 1]],
  
                           #[[1039.788, 0, 0.5, 0],
                           #[0, 1039.7880938825083/1080, 0.5, 0],
                           #[0, 0, 1, 0],
                           #[0, 0, 0, 1]],
 
-                          #[[0.54, 0, 0.5, 0],
-                          #[0, 0.96, 0.5, 0],
-                          #[0, 0, 1, 0],
-                          #[0, 0, 0, 1]],
+                          [[0.54, 0, 0.5, 0],
+                          [0, 0.96, 0.5, 0],
+                          [0, 0, 1, 0],
+                          [0, 0, 0, 1]],
  
                           #[[1039.7880938825083/1920, 0, 0.5, 0],
                           # [0, 1039.7880938825083/1080, 0.5, 0],
@@ -330,8 +330,8 @@ class KITTIDataset(MonoDataset):
         [False, True, True, True, False],
         [True, True, True, True, True]])
         
-        depth_gt = ndimage.binary_erosion(depth_gt, structure=struct2, iterations=10).astype(depth_gt.dtype)
-        cond = np.where(depth_gt!=0)
+        #depth_gt = ndimage.binary_erosion(depth_gt, structure=struct2, iterations=10).astype(depth_gt.dtype)
+        #cond = np.where(depth_gt!=0)
         #depth_gt[70:cond[0][0]][:] = depth_gt[cond[0][0]][:]
         depth_gt = Image.fromarray(depth_gt)
         # width, height = depth_gt.size
