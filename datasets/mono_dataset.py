@@ -188,12 +188,12 @@ class MonoDataset(data.Dataset):
 
         files = np.asarray(filenames_list)
         list_of_files = files[:,1]
-        print('list of files is',list_of_files)
-        print('file is ',line[1])
-        if str(line[1]) in list_of_files:
-            print("ok")
-        else:
-            print("not ok")
+        #print('list of files is',list_of_files)
+        #print('file is ',line[1])
+        #if str(line[1]) in list_of_files:
+        #    print("ok")
+        #else:
+            #print("not ok")
         #check if you have ground truth for that specefic image
 
 

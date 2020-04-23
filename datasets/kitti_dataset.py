@@ -272,7 +272,7 @@ class KITTIDataset(MonoDataset):
         #print(self.folder)
         
     def check_depth(self):
-        print('hello check depth')
+        #print('hello check depth')
         line = self.filenames[0].split()
         scene_name = line[0]
         frame_index = int(line[1])
