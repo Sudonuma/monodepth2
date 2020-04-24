@@ -224,11 +224,42 @@ class Trainer:
         """
         self.epoch = 0
         self.step = 0
+        #self.set_eval()
+        #try:
+        #    inputs = self.val_iter.next()
+        #except StopIteration:
+        #    self.val_iter = iter(self.val_loader)
+        #    inputs = self.val_iter.next()
+        #self.val_loader
+        with torch.no_grad():
+            self.set_eval()
+            rms_loss = []
+            for batch_idx, inputs in enumerate(self.val_loader):
+                self.batch_index = inputs['target_folder']
+                outputs, losses = self.process_batch(inputs)
+                self.compute_depth_losses(inputs, outputs, losses)
+                #print(losses["de/rms"], ':this is rms loss')
+                rms_loss.append(losses["de/rms"])
+            print('average loss: ', sum(rms_loss)/len(rms_loss))
+
         self.start_time = time.time()
         for self.epoch in range(self.opt.num_epochs):
             self.run_epoch()
             if (self.epoch + 1) % self.opt.save_frequency == 0:
                 self.save_model()
+        
+        with torch.no_grad():
+            self.set_eval()
+            rms_loss = []
+            for batch_idx, inputs in enumerate(self.val_loader):
+                self.batch_index = inputs['target_folder']
+                outputs, losses = self.process_batch(inputs)
+                self.compute_depth_losses(inputs, outputs, losses)
+                #print(losses["de/rms"], ':this is rms loss after finetuning')
+                rms_loss.append(losses["de/rms"])
+            print('average loss after each epoch: ', sum(rms_loss)/len(rms_loss))
+
+
 
     def run_epoch(self):
         """Run a single epoch of training and validation
@@ -412,6 +443,16 @@ class Trainer:
             # outputs[("color", frame_id, s)][j].data
             # inputs.pop('target_folder')
             plt.close('all')
+            with torch.no_grad():
+                self.set_eval()
+                rms_loss = []
+                for batch_idx, inputs in enumerate(self.val_loader):
+                    self.batch_index = inputs['target_folder']
+                    outputs, losses = self.process_batch(inputs)
+                    self.compute_depth_losses(inputs, outputs, losses)
+                    #print(losses["de/rms"], ':this is rms loss after each epoch')
+                    rms_loss.append(losses["de/rms"])
+                print('average loss after each epoch: ', sum(rms_loss)/len(rms_loss))
 
     def process_batch(self, inputs):
         """Pass a minibatch through the network and generate images and losses
@@ -845,7 +886,7 @@ elf.batch_index = inputs['target_folder']       """
         losses["gt_loss"] = total_gt_loss
         losses["reproj_loss"] = total_reproj_loss
         losses["reproj_ID"] = total_reproj_ID
-        
+        # self.compute_depth_losses(inputs, outputs, losses) "de/rms"
         #print(losses["gt_loss"], 'gt_loss alone')
         #here they are not backpropagated just computed
         
@@ -869,10 +910,11 @@ elf.batch_index = inputs['target_folder']       """
             depth_pred, [1080, 1920], mode="bilinear", align_corners=False), 1e-3, 80)
         
         depth_pred = depth_pred.detach()
-        #print(depth_pred)
+        #print('depth pred' ,depth_pred.size())
 
         depth_gt = inputs["depth_gt"]
-        #print("ground truth depth",depth_gt)
+        #depth_gt = inputs["ground_truth", 0, 0]
+        #print("ground truth depth" ,depth_gt.size())
         mask = depth_gt > 0
 
         # garg/eigen crop
@@ -897,6 +939,7 @@ elf.batch_index = inputs['target_folder']       """
 
         for i, metric in enumerate(self.depth_metric_names):
             losses[metric] = np.array(depth_errors[i].cpu())
+            #print('metric is:', metric, 'loss is: ',losses[metric])
 
     def log_time(self, batch_idx, duration, loss):
         """Print a logging statement to the terminal
