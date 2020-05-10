@@ -197,7 +197,8 @@ class MonoDataset(data.Dataset):
         #check if you have ground truth for that specefic image
 
 
-
+        #print(index,':index is')
+        #print(self.gt_filenames, ': gt filenames')
         gt_line = self.gt_filenames[index].split()
         
         #print('line is', line)
