@@ -215,7 +215,8 @@ class MonoDataset(data.Dataset):
         #    print('file does noy exists: file = ', self.file_number)
         self.folder = folder
         #print('this is self folder in monodataset class',self.folder)
-
+        #print("folder is", folder)
+        #print('filenumber is', self.file_number)
         if len(line) == 3:
             frame_index = int(line[1])
         else:
@@ -291,6 +292,7 @@ class MonoDataset(data.Dataset):
 
             inputs["stereo_T"] = torch.from_numpy(stereo_T)
         inputs["target_folder"] = folder
+        inputs["target_file"] = self.file_number
         # for key, ipt in inputs.items():
         #     print(key)
         return inputs

@@ -281,9 +281,16 @@ class Trainer:
         for batch_idx, inputs in enumerate(self.train_loader):
 
             self.batch_index = inputs['target_folder']
+            #print(inputs["target_file"], 'this is target file')
+            #print('inputs of target folder', inputs['target_folder'])
+            self.file_indexs = inputs["target_file"]
+            file_idx = self.file_indexs.tolist()
             before_op_time = time.time()
 
             outputs, losses = self.process_batch(inputs)
+            validation_number = 976
+            if validation_number in file_idx:
+                print('element is batch') 
             # print(outputs)
 
             # experiment.log_metric('loss before back prop', losses["loss"].cpu().detach().numpy(), epoch=self.step)
@@ -452,6 +459,33 @@ class Trainer:
                     self.compute_depth_losses(inputs, outputs, losses)
                     #print(losses["de/rms"], ':this is rms loss after each epoch')
                     rms_loss.append(losses["de/rms"])
+                    self.file_indexs = inputs["target_file"]
+                    file_idx = self.file_indexs.tolist()
+                    validation_number1 = 976
+                    validation_number2 = 989
+                    if validation_number1 in file_idx:
+                        #print('element in batch')
+                        disp = plt.figure()
+                        disparity = normalize_image(outputs[("disp", 0)][file_idx.index(validation_number1)])
+                        disparity = disparity.cpu().detach().numpy()
+                        disparity = np.squeeze(disparity)
+                        disparity = Image.fromarray(disparity)
+                        disp_im = disp.add_subplot(1,1,1, frameon=False)
+                        disp_im.imshow(disparity, cmap='magma')
+                        experiment.log_figure(figure_name="validation_disp_0/{}".format(validation_number1), figure=disp)
+
+                    if validation_number2 in file_idx:
+                        #print('element in batch')
+                        disp = plt.figure()
+                        disparity = normalize_image(outputs[("disp", 0)][file_idx.index(validation_number2)])
+                        disparity = disparity.cpu().detach().numpy()
+                        disparity = np.squeeze(disparity)
+                        disparity = Image.fromarray(disparity)
+                        disp_im = disp.add_subplot(1,1,1, frameon=False)
+                        disp_im.imshow(disparity, cmap='magma')
+                        experiment.log_figure(figure_name="validation_disp_0/{}".format(validation_number2), figure=disp)
+
+
                 print('average loss after each epoch: ', sum(rms_loss)/len(rms_loss))
 
     def process_batch(self, inputs):
@@ -579,8 +613,8 @@ elf.batch_index = inputs['target_folder']       """
             #if self.opt.batch_size/68 == 0:
             #current number of epochs *batch size
             #if self.num_val_samples/68 == 0:
-            if batch_idx == 68:      
-                for j in range(min(1, self.opt.batch_size)):
+            #if batch_idx == 68:      
+             #   for j in range(min(1, self.opt.batch_size)):
             #print('mask output to visualise',outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy().shape)
                 #experiment.log_image(Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()),'L').convert('1'), name="identity_selection0")
             #if not self.opt.disable_automasking:
@@ -591,14 +625,14 @@ elf.batch_index = inputs['target_folder']       """
                  #experiment.log_figure(figure_name="automask_0/{}".format(j))
 
 
-                    disp = plt.figure()
-                    disparity = normalize_image(outputs[("disp", 0)][j])
-                    disparity = disparity.cpu().detach().numpy()
-                    disparity = np.squeeze(disparity)
-                    disparity = Image.fromarray(disparity)
-                    disp_im = disp.add_subplot(1,1,1, frameon=False)
-                    disp_im.imshow(disparity, cmap='magma')
-                    experiment.log_figure(figure_name="val_disp_0/{}".format(j), figure=disp)
+              #      disp = plt.figure()
+               #     disparity = normalize_image(outputs[("disp", 0)][j])
+               #     disparity = disparity.cpu().detach().numpy()
+               #     disparity = np.squeeze(disparity)
+               #     disparity = Image.fromarray(disparity)
+               #     disp_im = disp.add_subplot(1,1,1, frameon=False)
+               #     disp_im.imshow(disparity, cmap='magma')
+               #     experiment.log_figure(figure_name="val_disp_0/{}".format(j), figure=disp)
 
             # print('inside validation',self.val_running_loss)
             # if self.step % ((self.num_train_samples/self.opt.batch_size)-1) == 0:
