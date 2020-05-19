@@ -863,22 +863,22 @@ elf.batch_index = inputs['target_folder']       """
                 # print('identity_reprojection_loss', identity_reprojection_loss)
                 # print('reprojection_loss', reprojection_loss)
 
-            if not self.opt.disable_automasking:
+            # if not self.opt.disable_automasking:
                 # hna ya3mal fel mask mais kifach yestakhdam fih?
                 # not optimasing the loss on the masked area? 
                 # l = torch.where(gt>0, do not mask, mask) now visualise it first
                 # l = torch.where(gt>0, 0, 1)
-                l = torch.where(inputs["ground_truth", 0, 0]>0 , torch.Tensor([0]).cuda(), torch.Tensor([1]).cuda())
-                l = torch.squeeze(l)
+            l = torch.where(inputs["ground_truth", 0, 0]>0 , torch.Tensor([0]).cuda(), torch.Tensor([1]).cuda())
+            l = torch.squeeze(l)
 
                 # print('l size is ', l.size())
-                outputs["identity_selection/{}".format(scale)] = (idxs > identity_reprojection_loss.shape[1] - 1).float()
+            outputs["identity_selection/{}".format(scale)] = (idxs > identity_reprojection_loss.shape[1] - 1).float()
                 # print('identity size', outputs["identity_selection/{}".format(scale)].size())
-                x1 = torch.where(inputs["ground_truth", 0, 0]>0 , torch.Tensor([1]).cuda(), outputs["identity_selection/{}".format(scale)])
+            x1 = torch.where(inputs["ground_truth", 0, 0]>0 , torch.Tensor([1]).cuda(), outputs["identity_selection/{}".format(scale)])
                 # print('x size is before squeeze ', x.size())
-                x1 = torch.squeeze(x1, dim=1)
+            x1 = torch.squeeze(x1, dim=1)
                 # print('x size is ', x.size())
-                outputs["identity_selection/{}".format(scale)] = x1
+            outputs["identity_selection/{}".format(scale)] = x1
                 # l = torch.where(inputs["ground_truth", 0, scale]>0 , torch.Tensor([0]).cuda(), outputs["identity_selection/{}".format(scale)])
                 
                 # print("identity_reprojection_loss.shape[1] - 1",((idxs > identity_reprojection_loss.shape[1] - 1).float()))
