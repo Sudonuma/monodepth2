@@ -27,7 +27,7 @@ import datasets
 import networks
 from IPython import embed
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
 #experiment = Experiment(api_key="l6NAe3ZOaMzGNsrPmy78yRnEv", project_name="monodepth2", workspace="tehad", auto_metric_logging=False)
 experiment = Experiment(api_key="l6NAe3ZOaMzGNsrPmy78yRnEv", project_name="monodepth2-checkpoint", workspace="tehad", auto_metric_logging=False)
@@ -831,11 +831,16 @@ elf.batch_index = inputs['target_folder']       """
             identity_reprojection_loss += torch.randn(
                 identity_reprojection_loss.shape).cuda() * 0.00001
             if not self.opt.disable_automasking:
+                #reprojection_loss[:,:,0:45,:] = identity_reprojection_loss[:,:,0:45,:]
                 combined = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
                 combined_ID = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
             else:
+                #reprojection_loss[:,:,0:90,:] = identity_reprojection_loss[:,:,0:90,:]
                 combined = reprojection_loss
+                #reprojection_loss[:,:,0:90,:] = 0.0044
+                #print('ID loss', reprojection_loss[0,0,0:90,0])
                 combined_ID = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
+                #print('reprojection loss',reprojection_loss.size())
 
             if combined.shape[1] == 1:
                 to_optimise = combined
