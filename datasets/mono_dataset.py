@@ -130,6 +130,16 @@ class MonoDataset(data.Dataset):
                     inputs[(n, im, i)] = self.resize1[i](inputs[(n, im, i - 1)])
 
                     # inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i - 1)])
+        for k in list(inputs):
+            frame = inputs[k]
+            # print(k)
+            if "mask" in k:
+                n, im, i = k
+                for i in range(self.num_scales):
+                    # x = inputs[(n, im, i)]
+                    # x = Image.fromarray(inputs[(n, im, i - 1)])
+                    inputs[(n, im, i)] = self.resize1[i](inputs[(n, im, i - 1)])
+
 
         for k in list(inputs):
             f = inputs[k]
@@ -145,6 +155,13 @@ class MonoDataset(data.Dataset):
                 n, im, i = k
                 inputs[(n, im, i)] = self.to_tensor(f)
                 # inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f))
+
+
+        for k in list(inputs):
+            f = inputs[k]
+            if "mask" in k:
+                n, im, i = k
+                inputs[(n, im, i)] = self.to_tensor(f)
 
     def __len__(self):
         return len(self.filenames)
@@ -180,7 +197,7 @@ class MonoDataset(data.Dataset):
         #print('this is the index',index)
         #print('filename is',self.filenames)
         line = self.filenames[index].split()
-
+        # print('line format is', line)
         #check if you have ground truth for that specefic image
         filenames_list = []
         for idx, i in enumerate(self.gt_filenames):
@@ -199,14 +216,14 @@ class MonoDataset(data.Dataset):
 
         #print(index,':index is')
         #print(self.gt_filenames, ': gt filenames')
-        gt_line = self.gt_filenames[index].split()
+        ############################gt_line = self.gt_filenames[index].split()
         
         #print('line is', line)
         #print()
         folder = line[0]
-        gt_folder = gt_line[0]
+        ###############################gt_folder = gt_line[0]
         self.file_number = int(line[1])
-        self.file_number_gt = int(gt_line[1])
+        ######################self.file_number_gt = int(gt_line[1])
         #print('ground truth file number', self.file_number_gt, 'gt folder', gt_folder)
         #print("file number", self.file_number, "folder", folder)
         #if self.file_number == self.file_number_gt:
@@ -243,7 +260,10 @@ class MonoDataset(data.Dataset):
             else:
                 x = np.zeros((1920,1080))
                 inputs[("ground_truth", i, -1)] = Image.fromarray(x)
-
+         
+        for i in self.frame_idxs:
+                inputs[("mask", i, -1)] = self.get_seg_mask(folder, frame_index + i, side, do_flip)
+        ########################################################
 
 
 
@@ -276,6 +296,7 @@ class MonoDataset(data.Dataset):
             del inputs[("color", i, -1)]
             del inputs[("color_aug", i, -1)]
             del inputs[("ground_truth", i, -1)]
+            del inputs[("mask", i, -1)]
 
         if self.load_depth:
             depth_gt = self.get_depth(folder, frame_index, side, do_flip)

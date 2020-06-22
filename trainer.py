@@ -159,7 +159,7 @@ class Trainer:
 
 
         self.train_loader = DataLoader(
-            train_dataset, self.opt.batch_size, True,
+            train_dataset, self.opt.batch_size, False,
             num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
         #val_dataset = self.dataset(
         #    self.opt.data_path, val_filenames, self.opt.height, self.opt.width,
@@ -174,7 +174,7 @@ class Trainer:
 
 
         self.val_loader = DataLoader(
-            val_dataset, self.opt.batch_size, True,
+            val_dataset, self.opt.batch_size, False,
             num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
         self.val_iter = iter(self.val_loader)
 
@@ -725,7 +725,9 @@ elf.batch_index = inputs['target_folder']       """
         
         ########################################## L2 loss from compute depth losses #####################################################################
         depth_pred = outputs[("depth", 0, 0)]
-        
+        #seg_mask = inputs[("mask", 0, 0)]
+        #print(seg_mask)
+        #print('size is',seg_mask.size) 
         #depth_pred = torch.clamp(F.interpolate(
         #    depth_pred, [1080, 1920], mode="bilinear", align_corners=False), 1e-3, 80)
         
@@ -831,8 +833,11 @@ elf.batch_index = inputs['target_folder']       """
             identity_reprojection_loss += torch.randn(
                 identity_reprojection_loss.shape).cuda() * 0.00001
             if not self.opt.disable_automasking:
+                # identity_reprojection_loss[:,:,0:45,:] = reprojection_loss[:,:,0:45,:]
                 #reprojection_loss[:,:,0:45,:] = identity_reprojection_loss[:,:,0:45,:]
+                reprojection_loss = torch.where(inputs["mask", 0, 0]==0, identity_reprojection_loss, reprojection_loss)
                 combined = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
+                #combined = torch.where(inputs["mask", 0, 0]==0, reprojection_loss, combined)
                 combined_ID = torch.cat((identity_reprojection_loss, reprojection_loss), dim=1)
             else:
                 #reprojection_loss[:,:,0:90,:] = identity_reprojection_loss[:,:,0:90,:]
@@ -849,7 +854,7 @@ elf.batch_index = inputs['target_folder']       """
                 no_optimise = combined
                 no_optimise_ID = combined_ID
                 to_optimise, idxs = torch.min(combined, dim=1)
-                #print('to optimize size',to_optimise.size())
+                # print('to optimize size',to_optimise.size())
                 repoj, ids = torch.min(reprojection_loss, dim=1)
                 # print("dim of to optimize",to_optimise.size())
                 # print('reprojection_loss size',repoj.size())

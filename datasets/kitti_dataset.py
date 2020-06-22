@@ -357,6 +357,16 @@ class KITTIDataset(MonoDataset):
         # crop and rescale notrescale directly          
         return depth_gt
 
+    def get_seg_mask(self, folder, frame_index, side, do_flip):
+        path = self.get_mask_path(folder, frame_index, side)
+
+        # (https://github.com/python-pillow/Pillow/issues/835)
+        with open(path, 'rb') as f:
+            with Image.open(f) as img:
+                if do_flip:
+                    img = img.transpose(pil.FLIP_LEFT_RIGHT)
+                return img.convert('L')
+
 
 class KITTIRAWDataset(KITTIDataset):
     """KITTI dataset which loads the original velodyne depth maps for ground truth
@@ -396,6 +406,13 @@ class KITTIRAWDataset(KITTIDataset):
             self.data_path, folder, "image_0{}/groundtruth/depth_map/npy/".format(self.side_map[side]), f_str)
 
         return depth_path
+
+    def get_mask_path(self, folder, frame_index, side):
+        f_str = str(frame_index)+".png"
+        mask_path = os.path.join(
+            self.data_path, folder, "image_0{}/mask/".format(self.side_map[side]), f_str)
+
+        return mask_path
     
     def get_depth(self, folder, frame_index, side, do_flip):
         #f_str = "{:010d}{}".format(frame_index, self.img_ext)
