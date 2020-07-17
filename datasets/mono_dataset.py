@@ -216,14 +216,14 @@ class MonoDataset(data.Dataset):
 
         #print(index,':index is')
         #print(self.gt_filenames, ': gt filenames')
-        ############################gt_line = self.gt_filenames[index].split()
+        ##############################################gt_line = self.gt_filenames[index].split()
         
         #print('line is', line)
         #print()
         folder = line[0]
-        ###############################gt_folder = gt_line[0]
+        ####################################gt_folder = gt_line[0]
         self.file_number = int(line[1])
-        ######################self.file_number_gt = int(gt_line[1])
+        #####################################self.file_number_gt = int(gt_line[1])
         #print('ground truth file number', self.file_number_gt, 'gt folder', gt_folder)
         #print("file number", self.file_number, "folder", folder)
         #if self.file_number == self.file_number_gt:

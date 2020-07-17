@@ -22,7 +22,7 @@ import json
 from utils import *
 from kitti_utils import *
 from layers import *
-
+import random
 import datasets
 import networks
 from IPython import embed
@@ -37,6 +37,11 @@ experiment = Experiment(api_key="l6NAe3ZOaMzGNsrPmy78yRnEv", project_name="monod
 class Trainer:
     def __init__(self, options):
         self.opt = options
+        #torch.backends.cudnn.deterministic = True
+        #random.seed(1)
+        #torch.manual_seed(1)
+        #torch.cuda.manual_seed(1)
+
         #self.experiment = experiment
         self.log_path = os.path.join(self.opt.log_dir, self.opt.model_name)
 
@@ -159,7 +164,7 @@ class Trainer:
 
 
         self.train_loader = DataLoader(
-            train_dataset, self.opt.batch_size, False,
+            train_dataset, self.opt.batch_size, True,
             num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
         #val_dataset = self.dataset(
         #    self.opt.data_path, val_filenames, self.opt.height, self.opt.width,
@@ -174,7 +179,7 @@ class Trainer:
 
 
         self.val_loader = DataLoader(
-            val_dataset, self.opt.batch_size, False,
+            val_dataset, self.opt.batch_size, True,
             num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
         self.val_iter = iter(self.val_loader)
 
@@ -368,6 +373,8 @@ class Trainer:
 
         # print('average loss', thisloss)
         #experiment.log_metric('last batch loss', losses["loss"].cpu().detach().numpy(), epoch=self.epoch)
+        print(gt_loss_per_epoch, 'gt_loss_per_epoch')
+        print(self.val_gt_loss, 'val gt loss per epoch')
         experiment.log_metric('Reprojection during training', reproj_loss_per_epoch, epoch=self.epoch)
         experiment.log_metric('Total loss druing training', thisloss, epoch=self.epoch)
         experiment.log_metric('Ground truth loss druing training', gt_loss_per_epoch, epoch=self.epoch)
