@@ -955,16 +955,51 @@ elf.batch_index = inputs['target_folder']       """
         so is only used to give an indication of validation performance
         """
         depth_pred = outputs[("depth", 0, 0)]
+        #print(depth_pred.size(), 'size of prediction')
         # depth_pred = torch.clamp(F.interpolate(
         #     depth_pred, [375, 1242], mode="bilinear", align_corners=False), 1e-3, 80)
         depth_pred = torch.clamp(F.interpolate(
             depth_pred, [1080, 1920], mode="bilinear", align_corners=False), 1e-3, 80)
         
         depth_pred = depth_pred.detach()
-                
+        #print('depth pred' ,depth_pred.size())
+
+        #depth_gt = inputs["depth_gt"]
+        #print(depth_gt.size(), 'size of depth in depth_gt')
+        depth_gt = inputs["ground_truth", 0, 0]
+        depth_gt = torch.clamp(F.interpolate(
+            depth_gt, [1080, 1920], mode="bilinear", align_corners=False), 1e-3, 80)
+        #print("ground truth depth in ground_truth" ,depth_gt.size())
+        mask = depth_gt > 0
+
+        # garg/eigen crop
+        #crop_mask = torch.zeros_like(mask)
+        #crop_mask[:, :, 153:371, 44:1197] = 1
+        #mask = mask * crop_mask
+
+        depth_gt = depth_gt[mask]
+        depth_pred = depth_pred[mask]
+        #print('ground truth',depth_gt.size())
+        #print('depth pred',depth_pred.size())
+        #print('size of median gt',torch.median(depth_gt))
+        #print('size of median pred',torch.median(depth_pred))
+        # jarrab nahiha
+        # depth_pred *= torch.median(depth_gt) / torch.median(depth_pred)
+        depth_pred *= torch.mean(depth_gt) / torch.mean(depth_pred)
+        #print(depth_pred)
+        #print(depth_gt)
+        depth_pred = torch.clamp(depth_pred, min=1e-3, max=80)
+
+        depth_errors = compute_depth_errors(depth_gt, depth_pred)
+
         for i, metric in enumerate(self.depth_metric_names):
             losses[metric] = np.array(depth_errors[i].cpu())
             #print('metric is:', metric, 'loss is: ',losses[metric])
+
+
+
+
+
 
     def log_time(self, batch_idx, duration, loss):
         """Print a logging statement to the terminal
