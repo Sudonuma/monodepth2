@@ -197,14 +197,20 @@ class MonoDataset(data.Dataset):
         #print('this is the index',index)
         #print('filename is',self.filenames)
         line = self.filenames[index].split()
+        # print(line, 'this is line')
+        line_gt = self.gt_filenames[index].split()
+        # print(line_gt, 'this is ground truth line')
         # print('line format is', line)
         #check if you have ground truth for that specefic image
         filenames_list = []
+        # print(self.gt_filenames, 'grounf truht filenames')
         for idx, i in enumerate(self.gt_filenames):
             filenames_list.append(i.split())
+        # print(filenames_list)
 
         files = np.asarray(filenames_list)
         list_of_files = files[:,1]
+        # print('list of existant ground truth values',list_of_files)
         #print('list of files is',list_of_files)
         #print('file is ',line[1])
         #if str(line[1]) in list_of_files:
@@ -221,8 +227,10 @@ class MonoDataset(data.Dataset):
         #print('line is', line)
         #print()
         folder = line[0]
+        folder_gt = line_gt[0]
         ####################################gt_folder = gt_line[0]
         self.file_number = int(line[1])
+        self.file_number_gt = int(line_gt[1])
         #####################################self.file_number_gt = int(gt_line[1])
         #print('ground truth file number', self.file_number_gt, 'gt folder', gt_folder)
         #print("file number", self.file_number, "folder", folder)
@@ -231,13 +239,16 @@ class MonoDataset(data.Dataset):
         #else:
         #    print('file does noy exists: file = ', self.file_number)
         self.folder = folder
+        self.folder_gt = folder_gt
         #print('this is self folder in monodataset class',self.folder)
         #print("folder is", folder)
         #print('filenumber is', self.file_number)
         if len(line) == 3:
             frame_index = int(line[1])
+            frame_index_gt = int(line_gt[1])
         else:
             frame_index = 0
+            frame_index_gt = 0
 
         if len(line) == 3:
             side = line[2]
@@ -254,10 +265,29 @@ class MonoDataset(data.Dataset):
         
         for i in self.frame_idxs:
             #inputs[("ground_truth", i, -1)] = self.get_gtdepth(folder, frame_index + i, side, do_flip)
-            if line[1] in list_of_files:
-            # print("ok")
+            value = int(line[1])+int(i)
+            # print('value of (int(line[1])+int(i))  ', value)
+            # print(list_of_files)
+            # files
+            # print(folder, 'folder is ',value ,'vaklue value ', side ,'side is')
+            compvalue = [folder, frame_index + i, side]
+            # print(compvalue, 'compvalue ')
+            l =  compvalue == files
+            # print((l.all(axis=1)).any(),'exits of not')
+            # if (l.all(axis=1)).any() == False:
+                # print(frame_index + i, 'no grpound truth for this')
+            # print(l, 'l is this array')
+            # l = x[0] == ['5','978','r']
+            # print(files[value], 'files de value is')
+            # if ()
+            # arr = files[value] == [folder , str(value) , side]
+            if (l.all(axis=1)).any():
+
+                # print('this is line[1]' ,line[1], 'this is frame index', frame_index )
+                # print("ok")
                 inputs[("ground_truth", i, -1)] = self.get_gtdepth(folder, frame_index + i, side, do_flip)
             else:
+                # print('not ok')
                 x = np.zeros((1920,1080))
                 inputs[("ground_truth", i, -1)] = Image.fromarray(x)
          
@@ -298,11 +328,11 @@ class MonoDataset(data.Dataset):
             del inputs[("ground_truth", i, -1)]
             del inputs[("mask", i, -1)]
 
-        if self.load_depth:
-            depth_gt = self.get_depth(folder, frame_index, side, do_flip)
-            # print(depth_gt)
-            inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
-            inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
+        # if self.load_depth:
+        #     depth_gt = self.get_depth(folder, frame_index, side, do_flip)
+        #     # print(depth_gt)
+        #     inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
+        #     inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
             # print(inputs["depth_gt"].size())
 
         if "s" in self.frame_idxs:

@@ -414,24 +414,24 @@ class KITTIRAWDataset(KITTIDataset):
 
         return mask_path
     
-    def get_depth(self, folder, frame_index, side, do_flip):
-        #f_str = "{:010d}{}".format(frame_index, self.img_ext)
-        # f_str = str(frame_index)+str(self.img_ext)
-        f_str = str(frame_index)+".npy"
-        depth_path = os.path.join(
-            self.data_path, folder, "image_0{}/groundtruth/depth_map/npy/".format(self.side_map[side]), f_str)
-        depth_gt = np.load(depth_path)
-        depth_gt = np.divide(depth_gt,1000)
-        if do_flip:
-            # color = color.transpose(pil.FLIP_LEFT_RIGHT)
-            depth_gt = np.fliplr(depth_gt)
+    # def get_depth(self, folder, frame_index, side, do_flip):
+    #     #f_str = "{:010d}{}".format(frame_index, self.img_ext)
+    #     # f_str = str(frame_index)+str(self.img_ext)
+    #     f_str = str(frame_index)+".npy"
+    #     depth_path = os.path.join(
+    #         self.data_path, folder, "image_0{}/groundtruth/depth_map/npy/".format(self.side_map[side]), f_str)
+    #     depth_gt = np.load(depth_path)
+    #     depth_gt = np.divide(depth_gt,1000)
+    #     if do_flip:
+    #         # color = color.transpose(pil.FLIP_LEFT_RIGHT)
+    #         depth_gt = np.fliplr(depth_gt)
         
-        # print(depth_gt.shape)
-        # print("fromkitti dataset",depth_path)
-        # if you return the depth path 
-        # better return the depth itself
-        return depth_gt
-        # return depth_gt
+    #     # print(depth_gt.shape)
+    #     # print("fromkitti dataset",depth_path)
+    #     # if you return the depth path 
+    #     # better return the depth itself
+    #     return depth_gt
+    #     # return depth_gt
 
 
 
@@ -466,19 +466,19 @@ class KITTIDepthDataset(KITTIDataset):
             f_str)
         return image_path
 
-    def get_depth(self, folder, frame_index, side, do_flip):
-        f_str = "{:010d}.png".format(frame_index)
-        depth_path = os.path.join(
-            self.data_path,
-            folder,
-            "proj_depth/groundtruth/image_0{}".format(self.side_map[side]),
-            f_str)
+    # def get_depth(self, folder, frame_index, side, do_flip):
+    #     f_str = "{:010d}.png".format(frame_index)
+    #     depth_path = os.path.join(
+    #         self.data_path,
+    #         folder,
+    #         "proj_depth/groundtruth/image_0{}".format(self.side_map[side]),
+    #         f_str)
 
-        depth_gt = pil.open(depth_path)
-        depth_gt = depth_gt.resize(self.full_res_shape, pil.NEAREST)
-        depth_gt = np.array(depth_gt).astype(np.float32) / 256
+    #     depth_gt = pil.open(depth_path)
+    #     depth_gt = depth_gt.resize(self.full_res_shape, pil.NEAREST)
+    #     depth_gt = np.array(depth_gt).astype(np.float32) / 256
 
-        if do_flip:
-            depth_gt = np.fliplr(depth_gt)
+    #     if do_flip:
+    #         depth_gt = np.fliplr(depth_gt)
 
-        return depth_gt
+    #     return depth_gt
