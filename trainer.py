@@ -958,8 +958,8 @@ elf.batch_index = inputs['target_folder']       """
         #print(depth_pred.size(), 'size of prediction')
         # depth_pred = torch.clamp(F.interpolate(
         #     depth_pred, [375, 1242], mode="bilinear", align_corners=False), 1e-3, 80)
-        depth_pred = torch.clamp(F.interpolate(
-            depth_pred, [1080, 1920], mode="bilinear", align_corners=False), 1e-3, 80)
+        depth_pred = F.interpolate(
+            depth_pred, [1080, 1920], mode="bilinear", align_corners=False)
         
         depth_pred = depth_pred.detach()
         #print('depth pred' ,depth_pred.size())
@@ -969,6 +969,8 @@ elf.batch_index = inputs['target_folder']       """
         depth_gt = inputs["ground_truth", 0, 0]
         depth_gt = torch.clamp(F.interpolate(
             depth_gt, [1080, 1920], mode="bilinear", align_corners=False), 1e-3, 80)
+        depth_gt = F.interpolate(
+            depth_gt, [1080, 1920], mode="bilinear", align_corners=False)
         #print("ground truth depth in ground_truth" ,depth_gt.size())
         mask = depth_gt > 0
 
