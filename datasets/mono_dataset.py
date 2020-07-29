@@ -92,6 +92,7 @@ class MonoDataset(data.Dataset):
 
         self.resize = {}
         self.resize1 = {}
+        self.resize2 = {}
         for i in range(self.num_scales):
             s = 2 ** i
             self.resize[i] = transforms.Resize((self.height // s, self.width // s),
@@ -100,6 +101,8 @@ class MonoDataset(data.Dataset):
             # self.resize1[i] = transforms.Resize((288, 512), interpolation=0)
 
             self.resize1[i] = transforms.Resize((self.height // s, self.width // s), interpolation=0)
+            self.resize2[i] = transforms.Resize((1080 // 1, 1920 // 1), interpolation=0)
+            #self.resize2[i] = transforms.ToTensor()
 
         # self.load_depth = self.check_depth()
         self.load_depth = True
@@ -121,15 +124,27 @@ class MonoDataset(data.Dataset):
 
         for k in list(inputs):
             frame = inputs[k]
-            # print(k)
+            #print(k, 'k mta3 ground truth')
             if "ground_truth" in k:
+                #print(k, 'k mta3 ground truth')
                 n, im, i = k
                 for i in range(self.num_scales):
                     # x = inputs[(n, im, i)]
                     # x = Image.fromarray(inputs[(n, im, i - 1)])
                     inputs[(n, im, i)] = self.resize1[i](inputs[(n, im, i - 1)])
 
-                    # inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i - 1)])
+
+        for k in list(inputs):
+            frame = inputs[k]
+            #print(k, 'k mta3 ground truth')
+            if "depth_gt" in k:
+                #print(k, 'k mta3 ground truth')
+                n, im, i = k
+                for i in range(self.num_scales):
+                    # x = inputs[(n, im, i)]
+                    # x = Image.fromarray(inputs[(n, im, i - 1)])
+                    inputs[(n, im, i)] = self.resize2[i](inputs[(n, im, i - 1)])
+
         for k in list(inputs):
             frame = inputs[k]
             # print(k)
@@ -155,6 +170,12 @@ class MonoDataset(data.Dataset):
                 n, im, i = k
                 inputs[(n, im, i)] = self.to_tensor(f)
                 # inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f))
+        for k in list(inputs):
+            f = inputs[k]
+            if "depth_gt" in k:
+                #print(k, 'k mta3 depth gt')
+                n, im, i = k
+                inputs[(n, im, i)] = self.to_tensor(f)
 
 
         for k in list(inputs):
@@ -264,6 +285,7 @@ class MonoDataset(data.Dataset):
 
         
         for i in self.frame_idxs:
+            #print(self.frame_idxs, 'frame indexes', i, 'i')
             #inputs[("ground_truth", i, -1)] = self.get_gtdepth(folder, frame_index + i, side, do_flip)
             value = int(line[1])+int(i)
             # print('value of (int(line[1])+int(i))  ', value)
@@ -286,10 +308,14 @@ class MonoDataset(data.Dataset):
                 # print('this is line[1]' ,line[1], 'this is frame index', frame_index )
                 # print("ok")
                 inputs[("ground_truth", i, -1)] = self.get_gtdepth(folder, frame_index + i, side, do_flip)
+                inputs[("depth_gt", i, -1)] = self.get_gtdepth(folder, frame_index + i, side, do_flip)
+                #print(inputs[("ground_truth", i, -1)], 'ground truth')
+                #print(inputs[("depth_gt", i, -1)] , 'depth gt')
             else:
                 # print('not ok')
                 x = np.zeros((1920,1080))
                 inputs[("ground_truth", i, -1)] = Image.fromarray(x)
+                inputs[("depth_gt", i, -1)] = Image.fromarray(x)
          
         for i in self.frame_idxs:
                 inputs[("mask", i, -1)] = self.get_seg_mask(folder, frame_index + i, side, do_flip)
@@ -326,6 +352,7 @@ class MonoDataset(data.Dataset):
             del inputs[("color", i, -1)]
             del inputs[("color_aug", i, -1)]
             del inputs[("ground_truth", i, -1)]
+            del inputs[("depth_gt", i, -1)]
             del inputs[("mask", i, -1)]
 
         # if self.load_depth:

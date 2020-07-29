@@ -622,7 +622,7 @@ elf.batch_index = inputs['target_folder']       """
             #if self.num_val_samples/68 == 0:
             #if batch_idx == 68:      
              #   for j in range(min(1, self.opt.batch_size)):
-            #print('mask output to visualise',outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy().shape)
+            #print('mask output to visualise',outputs["ideprint(depth_gt.size(), 'size of depth in depth_gt')ntity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy().shape)
                 #experiment.log_image(Image.fromarray(np.squeeze(outputs["identity_selection/{}".format(0)][j][None, ...].cpu().detach().numpy()),'L').convert('1'), name="identity_selection0")
             #if not self.opt.disable_automasking:
              #   mask = plt.figure()
@@ -966,11 +966,11 @@ elf.batch_index = inputs['target_folder']       """
 
         #depth_gt = inputs["depth_gt"]
         #print(depth_gt.size(), 'size of depth in depth_gt')
-        depth_gt = inputs["ground_truth", 0, 0]
-        depth_gt = torch.clamp(F.interpolate(
-            depth_gt, [1080, 1920], mode="bilinear", align_corners=False), 1e-3, 80)
-        depth_gt = F.interpolate(
-            depth_gt, [1080, 1920], mode="bilinear", align_corners=False)
+        depth_gt = inputs["depth_gt", 0, 0]
+        depth_gt = torch.clamp(depth_gt, 1e-3, 80)
+        print(depth_gt.size(), 'size of depth in depth_gt')
+        #depth_gt = F.interpolate(
+        #    depth_gt, [1080, 1920], mode="bilinear", align_corners=False)
         #print("ground truth depth in ground_truth" ,depth_gt.size())
         mask = depth_gt > 0
 
