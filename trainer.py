@@ -963,7 +963,7 @@ elf.batch_index = inputs['target_folder']       """
         depth_pred = depth_pred.detach()
         depth_gt = inputs["depth_gt", 0, 0]
         depth_gt = torch.clamp(depth_gt, 0, 80)
-        depth_pred = torch.clamp(depth_pred, min=1e-3, max=80)
+        depth_pred = torch.clamp(depth_pred, min=0, max=80)
         depth_pred1 = depth_pred.detach().cpu().numpy()
         depth_gt1 = depth_gt.detach().cpu().numpy()
         depth_mask = ma.array(depth_gt1, mask = ~(depth_gt1>0))

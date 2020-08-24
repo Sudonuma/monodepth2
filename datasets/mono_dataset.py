@@ -218,9 +218,9 @@ class MonoDataset(data.Dataset):
         #print('this is the index',index)
         #print('filename is',self.filenames)
         line = self.filenames[index].split()
-        # print(line, 'this is line')
+        print(line, 'this is line')
         line_gt = self.gt_filenames[index].split()
-        # print(line_gt, 'this is ground truth line')
+        print(line_gt, 'this is ground truth line')
         # print('line format is', line)
         #check if you have ground truth for that specefic image
         filenames_list = []
